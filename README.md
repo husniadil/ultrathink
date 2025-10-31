@@ -138,7 +138,7 @@ Add to your `claude_desktop_config.json`:
 ```json
 {
   "mcpServers": {
-    "ultrathink": {
+    "UltraThink": {
       "command": "uv",
       "args": ["--directory", "/path/to/ultrathink", "run", "ultrathink"]
     }
@@ -163,7 +163,7 @@ Example configuration (`.mcp.json.example`):
 ```json
 {
   "mcpServers": {
-    "ultrathink": {
+    "UltraThink": {
       "command": "uv",
       "args": ["--directory", "/path/to/ultrathink", "run", "ultrathink"],
       "env": {
@@ -211,8 +211,8 @@ Built with **Domain-Driven Design (DDD)** principles for clean separation of con
 
 **src/ultrathink/**
 
-- \***\*init**.py\*\*: Package exports
-- \***\*main**.py\*\*: CLI entry point (enables `uv run ultrathink`)
+- **\_\_init\_\_.py**: Package exports
+- **\_\_main\_\_.py**: CLI entry point (enables `uv run ultrathink`)
 - **main.py**: MCP server entry point with FastMCP tool registration
 - **dto.py**: Interface DTOs (ThoughtRequest, ThoughtResponse)
 - **thought.py**: Thought entity with validation and behaviors
