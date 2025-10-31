@@ -14,12 +14,6 @@ def ultrathink(
     thought: Annotated[
         str, Field(min_length=1, description="Your current thinking step")
     ],
-    thought_number: Annotated[
-        int,
-        Field(
-            ge=1, description="Current thought number (numeric value, e.g., 1, 2, 3)"
-        ),
-    ],
     total_thoughts: Annotated[
         int,
         Field(
@@ -30,6 +24,18 @@ def ultrathink(
     next_thought_needed: Annotated[
         bool, Field(description="Whether another thought step is needed")
     ],
+    thought_number: Annotated[
+        int | None,
+        Field(
+            None,
+            ge=1,
+            description="Current thought number (auto-assigned if omitted, or provide explicit number for branching/semantic control)",
+        ),
+    ] = None,
+    session_id: Annotated[
+        str | None,
+        Field(None, description="Session identifier (None = create new session)"),
+    ] = None,
     is_revision: Annotated[
         bool | None, Field(None, description="Whether this revises previous thinking")
     ] = None,
@@ -91,8 +97,12 @@ def ultrathink(
       * Hypothesis generation
       * Hypothesis verification
     - next_thought_needed: True if you need more thinking, even if at what seemed like the end
-    - thought_number: Current number in sequence (can go beyond initial total if needed)
+    - thought_number: Current number in sequence - auto-assigned sequentially if omitted (1, 2, 3...), or provide explicit number for branching/semantic control
     - total_thoughts: Current estimate of thoughts needed (can be adjusted up/down)
+    - session_id: Optional session identifier for managing multiple thinking sessions
+      * None (default): Creates a new session with auto-generated UUID
+      * Provide a session_id from previous response: Continue that thinking session
+      * Provide a custom string: Create or resume session with that ID (resilient recovery)
     - is_revision: A boolean indicating if this thought revises previous thinking
     - revises_thought: If is_revision is true, which thought number is being reconsidered
     - branch_from_thought: If branching, which thought number is the branching point
@@ -113,17 +123,22 @@ def ultrathink(
     2. Question or revise previous thoughts using is_revision=true and revises_thought parameters
     3. Explore alternative reasoning paths using branch_from_thought and branch_id parameters
     4. Add more thoughts if needed, even after reaching what seemed like the end
-    5. Express uncertainty using the confidence parameter (0.0=very uncertain, 1.0=very certain)
+    5. Manage sessions for context continuity:
+       - First call: Omit session_id (or set to None) to create new session
+       - Subsequent calls: Use session_id from response to continue the same session
+       - Multiple problems: Use different session_ids for separate thinking contexts
+       - Resilient recovery: Reuse the same custom session_id across reconnections
+    6. Express uncertainty using the confidence parameter (0.0=very uncertain, 1.0=very certain)
        - Low confidence (0.3-0.6): Exploratory thinking, initial hypotheses, uncertain analysis
        - Medium confidence (0.6-0.8): Reasoned analysis, likely conclusions, working hypotheses
        - High confidence (0.8-1.0): Verified solutions, confident conclusions, proven facts
-    6. Clearly state what you're analyzing or deciding in each thought
-    7. Ignore information that is irrelevant to the current step
-    8. Generate solution hypotheses as you develop understanding
-    9. Verify hypotheses through subsequent thinking steps
-    10. Repeat the process until you reach a satisfactory solution
-    11. Provide a single, ideally correct answer as the final output
-    12. Only set next_thought_needed=false when truly done and you have a complete answer
+    7. Clearly state what you're analyzing or deciding in each thought
+    8. Ignore information that is irrelevant to the current step
+    9. Generate solution hypotheses as you develop understanding
+    10. Verify hypotheses through subsequent thinking steps
+    11. Repeat the process until you reach a satisfactory solution
+    12. Provide a single, ideally correct answer as the final output
+    13. Only set next_thought_needed=false when truly done and you have a complete answer
     """
     # Construct ThoughtRequest from flat parameters
     request = ThoughtRequest(
@@ -131,6 +146,7 @@ def ultrathink(
         thought_number=thought_number,
         total_thoughts=total_thoughts,
         next_thought_needed=next_thought_needed,
+        session_id=session_id,
         is_revision=is_revision,
         revises_thought=revises_thought,
         branch_from_thought=branch_from_thought,

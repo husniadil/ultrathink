@@ -11,8 +11,9 @@ This is a Python port of the [TypeScript sequential thinking MCP server](https:/
 - **Branching**: Explore alternative paths of reasoning
 - **Confidence Scoring**: Explicit uncertainty tracking (0.0-1.0 scale)
 - **Auto-adjustment**: Automatically adjusts total thoughts if needed
+- **Multi-Session Support**: Manage multiple concurrent thinking sessions with session IDs
 - **Formatted Logging**: Colored terminal output with rich formatting (can be disabled)
-- **100% Test Coverage**: Comprehensive test suite with 41 test cases
+- **100% Test Coverage**: Comprehensive test suite with full code coverage
 - **Type Safety**: Full mypy strict mode type checking for production code
 - **DDD Architecture**: Clean domain model with entities, aggregates, and services
 
@@ -83,12 +84,13 @@ The server provides a single tool for dynamic and reflective problem-solving thr
 **Required:**
 
 - `thought` (str): Your current thinking step
-- `thought_number` (int): Current thought number (>=1)
 - `total_thoughts` (int): Estimated total thoughts needed (>=1)
 - `next_thought_needed` (bool): Whether another thought step is needed
 
 **Optional:**
 
+- `thought_number` (int): Current thought number - auto-assigned sequentially if omitted (1, 2, 3...), or provide explicit number for branching/semantic control
+- `session_id` (str): Session identifier for managing multiple thinking sessions (None = create new, provide ID to continue session)
 - `is_revision` (bool): Whether this revises previous thinking
 - `revises_thought` (int): Which thought number is being reconsidered
 - `branch_from_thought` (int): Branching point thought number
@@ -100,11 +102,12 @@ The server provides a single tool for dynamic and reflective problem-solving thr
 
 Returns a JSON object with:
 
+- `session_id`: Session identifier for continuation
 - `thoughtNumber`: Current thought number
 - `totalThoughts`: Total thoughts (auto-adjusted if needed)
 - `nextThoughtNeeded`: Whether more thinking is needed
 - `branches`: List of branch IDs
-- `thoughtHistoryLength`: Number of thoughts processed
+- `thoughtHistoryLength`: Number of thoughts processed in this session
 - `confidence`: Confidence level of this thought (0.0-1.0, optional)
 
 ### Example
@@ -178,6 +181,28 @@ This configuration:
 - Useful for testing the server locally with colored output enabled
 - **Note:** `.mcp.json` is gitignored - customize it for your local setup
 
+## Session Management
+
+### Session Lifecycle
+
+**Important:** Sessions are stored **in-memory only** and will be lost when the server restarts or terminates. Each session is identified by a unique session ID and maintains:
+
+- Thought history for that session
+- Branch tracking
+- Sequential thought numbering
+
+**Implications:**
+
+- Sessions do not persist across server restarts
+- All thinking context is lost when the server stops
+- For production use cases requiring persistent sessions, you would need to implement custom session persistence (e.g., to disk, database, or external state management)
+
+**Best Practices:**
+
+- Use custom session IDs (instead of auto-generated UUIDs) for resilient recovery if you need to recreate session context
+- Keep session-critical information in your application layer if persistence is required
+- Consider sessions as ephemeral working memory for active problem-solving tasks
+
 ## Architecture
 
 Built with **Domain-Driven Design (DDD)** principles for clean separation of concerns and maintainable code.
@@ -194,9 +219,9 @@ Built with **Domain-Driven Design (DDD)** principles for clean separation of con
 - **session.py**: ThinkingSession aggregate root
 - **service.py**: UltraThinkService application service
 
-**tests/** (35 tests, 100% coverage)
+**tests/** (100% coverage)
 
-- **test_server.py**: Server tests (validation, functionality, branching)
+- **test_server.py**: Server tests (validation, functionality, branching, multi-session)
 - **test_thought.py**: Thought entity tests (properties, formatting)
 - **test_logging.py**: Logging and formatting tests
 - **test_main.py**: Main entry point and MCP server tests
@@ -371,30 +396,13 @@ The project uses **mypy in strict mode** across the entire codebase (`src/`, `te
 
 Tests are organized by concern for better maintainability:
 
-**test_server.py** (25 tests)
+**test_server.py**: Validation, functionality, branching, edge cases, response format, reference validation, and multi-session support
 
-- Validation (10 tests): Parameter validation and error handling (including confidence range)
-- Functionality (5 tests): Core features and thought tracking (including confidence scoring)
-- Branching (2 tests): Alternative reasoning paths
-- Edge Cases (5 tests): Boundary conditions
-- Response Format (3 tests): Output structure validation
+**test_thought.py**: Entity properties, auto-adjustment, formatting, validation, and confidence scoring
 
-**test_thought.py** (11 tests)
+**test_logging.py**: Formatted logging for regular, revision, and branch thoughts
 
-- Entity Properties (2 tests): is_final, is_branch properties
-- Auto-adjustment (2 tests): Total thoughts adjustment logic
-- Formatting (4 tests): Visual output for regular, revision, branch, and confidence display
-- Validation (1 test): Whitespace-only thought rejection
-- Confidence (2 tests): Confidence field validation and defaults
-
-**test_logging.py** (3 tests)
-
-- Formatted logging for regular, revision, and branch thoughts
-
-**test_main.py** (2 tests)
-
-- Tool function invocation
-- CLI entry point
+**test_main.py**: Tool function invocation and CLI entry point
 
 ## Differences from TypeScript Version
 

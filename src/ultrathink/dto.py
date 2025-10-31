@@ -13,12 +13,6 @@ class ThoughtRequest(BaseModel):
     thought: Annotated[
         str, Field(min_length=1, description="Your current thinking step")
     ]
-    thought_number: Annotated[
-        int,
-        Field(
-            ge=1, description="Current thought number (numeric value, e.g., 1, 2, 3)"
-        ),
-    ]
     total_thoughts: Annotated[
         int,
         Field(
@@ -29,6 +23,18 @@ class ThoughtRequest(BaseModel):
     next_thought_needed: Annotated[
         bool, Field(description="Whether another thought step is needed")
     ]
+    thought_number: Annotated[
+        int | None,
+        Field(
+            None,
+            ge=1,
+            description="Current thought number (auto-assigned if omitted, or provide explicit number for branching/semantic control)",
+        ),
+    ] = None
+    session_id: Annotated[
+        str | None,
+        Field(None, description="Session identifier (None = create new session)"),
+    ] = None
     is_revision: Annotated[
         bool | None, Field(None, description="Whether this revises previous thinking")
     ] = None
@@ -68,6 +74,7 @@ class ThoughtResponse(BaseModel):
     Represents output sent to MCP clients
     """
 
+    session_id: Annotated[str, Field(description="Session identifier for continuation")]
     thought_number: Annotated[
         int, Field(ge=1, description="Current thought number in sequence")
     ]

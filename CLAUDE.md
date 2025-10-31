@@ -75,8 +75,8 @@ src/ultrathink/          # Main package
 ├── session.py           # ThinkingSession aggregate root
 └── service.py           # UltraThinkService application service
 
-tests/                   # Test files (41 tests, 100% coverage)
-├── test_server.py       # Server tests (validation, functionality, branching)
+tests/                   # Test files (100% coverage)
+├── test_server.py       # Server tests (validation, functionality, branching, multi-session)
 ├── test_thought.py      # Thought entity tests (properties, formatting)
 ├── test_logging.py      # Logging and formatting tests
 └── test_main.py         # Main entry point and MCP server tests
@@ -125,11 +125,11 @@ The FastMCP framework automatically:
 
 All tools should be tested:
 
-1. Unit tests (35 tests organized by concern):
-   - `tests/test_server.py` - Server validation, functionality, branching (22 tests)
-   - `tests/test_thought.py` - Thought entity properties and formatting (8 tests)
-   - `tests/test_logging.py` - Logging and formatted output (3 tests)
-   - `tests/test_main.py` - Main entry point and CLI (2 tests)
+1. Unit tests organized by concern:
+   - `tests/test_server.py` - Server validation, functionality, branching, multi-session
+   - `tests/test_thought.py` - Thought entity properties and formatting
+   - `tests/test_logging.py` - Logging and formatted output
+   - `tests/test_main.py` - Main entry point and CLI
 2. Integration tests via `examples/client.py`:
    - Connect to server using in-memory transport
    - List available tools
@@ -149,6 +149,16 @@ from .service import UltraThinkService
 from .thought import Thought
 ```
 
+### Session Management
+
+**Important Design Note:** Sessions are stored in-memory only (`UltraThinkService._sessions: dict[str, ThinkingSession]`). This means:
+
+- **Sessions are ephemeral** - all session data is lost when the server restarts
+- **No persistence layer** - sessions exist only in memory during server runtime
+- **Production consideration** - if persistent sessions are needed, implement custom session storage (disk, database, Redis, etc.)
+
+This design choice keeps the implementation simple and stateless-friendly, but developers should be aware that session continuity across restarts requires additional implementation.
+
 ## Dependencies
 
 - **fastmcp**: Framework for building MCP servers with minimal boilerplate
@@ -158,7 +168,7 @@ from .thought import Thought
 ## Code Quality
 
 - **Type Safety**: All code (src, tests, examples) is fully type-checked with mypy in strict mode
-- **Coverage**: 100% test coverage across 35 tests
+- **Coverage**: 100% test coverage maintained across all code
 - **Formatting**: Automated with ruff and prettier
 - **Linting**: Enforced with ruff
 

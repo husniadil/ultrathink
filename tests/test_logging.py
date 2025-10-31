@@ -35,12 +35,14 @@ class TestLogging:
         self, server_with_logging: UltraThinkService
     ) -> None:
         """Should format and log revision thoughts"""
+        session_id = "test-session"
         # Create original thought first
         request1 = ThoughtRequest(
             thought="Original thought",
             thought_number=1,
             total_thoughts=3,
             next_thought_needed=True,
+            session_id=session_id,
         )
         server_with_logging.process_thought(request1)
 
@@ -52,6 +54,7 @@ class TestLogging:
             next_thought_needed=True,
             is_revision=True,
             revises_thought=1,
+            session_id=session_id,
         )
 
         response = server_with_logging.process_thought(request2)
@@ -61,12 +64,14 @@ class TestLogging:
         self, server_with_logging: UltraThinkService
     ) -> None:
         """Should format and log branch thoughts"""
+        session_id = "test-session"
         # Create original thought first
         request1 = ThoughtRequest(
             thought="Original thought",
             thought_number=1,
             total_thoughts=3,
             next_thought_needed=True,
+            session_id=session_id,
         )
         server_with_logging.process_thought(request1)
 
@@ -78,6 +83,7 @@ class TestLogging:
             next_thought_needed=False,
             branch_from_thought=1,
             branch_id="branch-a",
+            session_id=session_id,
         )
 
         response = server_with_logging.process_thought(request2)
