@@ -54,9 +54,16 @@ class UltraThinkService:
         else:
             thought_number = request.thought_number
 
-        # 1. Translate DTO to domain entity (exclude session_id, override thought_number)
+        # Auto-assign next_thought_needed if not provided
+        if request.next_thought_needed is None:
+            next_thought_needed = thought_number < request.total_thoughts
+        else:
+            next_thought_needed = request.next_thought_needed
+
+        # 1. Translate DTO to domain entity (exclude session_id, override auto-assigned fields)
         thought_data = request.model_dump(exclude={"session_id"})
         thought_data["thought_number"] = thought_number
+        thought_data["next_thought_needed"] = next_thought_needed
         thought = Thought(**thought_data)
 
         # 2. Execute domain logic

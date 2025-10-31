@@ -22,8 +22,12 @@ def ultrathink(
         ),
     ],
     next_thought_needed: Annotated[
-        bool, Field(description="Whether another thought step is needed")
-    ],
+        bool | None,
+        Field(
+            None,
+            description="Whether another thought step is needed (auto: true if thought_number < total_thoughts)",
+        ),
+    ] = None,
     thought_number: Annotated[
         int | None,
         Field(
@@ -96,7 +100,7 @@ def ultrathink(
       * Changes in approach
       * Hypothesis generation
       * Hypothesis verification
-    - next_thought_needed: True if you need more thinking, even if at what seemed like the end
+    - next_thought_needed: Optional - auto-assigned as (thought_number < total_thoughts) if omitted. Set explicitly to override (e.g., True to extend beyond total_thoughts, False to end early)
     - thought_number: Current number in sequence - auto-assigned sequentially if omitted (1, 2, 3...), or provide explicit number for branching/semantic control
     - total_thoughts: Current estimate of thoughts needed (can be adjusted up/down)
     - session_id: Optional session identifier for managing multiple thinking sessions
@@ -138,7 +142,7 @@ def ultrathink(
     10. Verify hypotheses through subsequent thinking steps
     11. Repeat the process until you reach a satisfactory solution
     12. Provide a single, ideally correct answer as the final output
-    13. Only set next_thought_needed=false when truly done and you have a complete answer
+    13. The next_thought_needed parameter is auto-assigned based on progress (thought_number < total_thoughts). Only set it explicitly when you need to override the default behavior (e.g., to extend thinking beyond the initial estimate or to end early)
     """
     # Construct ThoughtRequest from flat parameters
     request = ThoughtRequest(

@@ -21,8 +21,12 @@ class ThoughtRequest(BaseModel):
         ),
     ]
     next_thought_needed: Annotated[
-        bool, Field(description="Whether another thought step is needed")
-    ]
+        bool | None,
+        Field(
+            None,
+            description="Whether another thought step is needed (auto: true if thought_number < total_thoughts)",
+        ),
+    ] = None
     thought_number: Annotated[
         int | None,
         Field(

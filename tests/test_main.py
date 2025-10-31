@@ -28,6 +28,23 @@ class TestUltraThinkTool:
         assert response.total_thoughts == 1
         assert response.next_thought_needed is False
 
+    def test_ultrathink_tool_with_auto_assigned_next_thought(self) -> None:
+        """Should auto-assign next_thought_needed when omitted"""
+        os.environ["DISABLE_THOUGHT_LOGGING"] = "true"
+
+        # Test without next_thought_needed - should auto-assign
+        request = ThoughtRequest(
+            thought="Test thought",
+            thought_number=1,
+            total_thoughts=3,
+            # next_thought_needed omitted
+        )
+
+        response = ultrathink.fn(**request.model_dump())
+        assert response.thought_number == 1
+        assert response.total_thoughts == 3
+        assert response.next_thought_needed is True  # Auto-assigned
+
 
 class TestCLIEntryPoint:
     """Test suite for CLI entry point"""

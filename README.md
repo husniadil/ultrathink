@@ -1,8 +1,21 @@
-# UltraThink
+# UltraThink MCP Server
 
-A Python MCP (Model Context Protocol) server for sequential thinking and problem-solving, built with FastMCP.
+<div align="center">
 
-This is a Python port of the [TypeScript sequential thinking MCP server](https://github.com/modelcontextprotocol/servers/tree/main/src/sequentialthinking) with 100% feature parity, renamed to "UltraThink".
+**A Python MCP server for sequential thinking and problem-solving**
+
+[![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
+[![FastMCP](https://img.shields.io/badge/FastMCP-2.13-green.svg)](https://github.com/jlowin/fastmcp)
+[![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
+</div>
+
+---
+
+> **Enhanced Python port** of the [Sequential Thinking MCP Server](https://github.com/modelcontextprotocol/servers/tree/main/src/sequentialthinking) by Anthropic.
+> Maintains full compatibility while adding **confidence scoring**, **auto-assigned thought numbers**, and **multi-session support**.
+
+---
 
 ## Features
 
@@ -97,11 +110,11 @@ The server provides a single tool for dynamic and reflective problem-solving thr
 
 - `thought` (str): Your current thinking step
 - `total_thoughts` (int): Estimated total thoughts needed (>=1)
-- `next_thought_needed` (bool): Whether another thought step is needed
 
 **Optional:**
 
 - `thought_number` (int): Current thought number - auto-assigned sequentially if omitted (1, 2, 3...), or provide explicit number for branching/semantic control
+- `next_thought_needed` (bool): Whether another thought step is needed. Auto-assigned as `thought_number < total_thoughts` if omitted. Set explicitly to override default behavior
 - `session_id` (str): Session identifier for managing multiple thinking sessions (None = create new, provide ID to continue session)
 - `is_revision` (bool): Whether this revises previous thinking
 - `revises_thought` (int): Which thought number is being reconsidered
@@ -124,16 +137,53 @@ Returns a JSON object with:
 
 ### Example
 
+#### Basic Usage
+
 ```python
 from fastmcp import Client
 from ultrathink.main import mcp
 
 async with Client(mcp) as client:
+    # Simple sequential thinking with auto-assigned fields
     result = await client.call_tool("ultrathink", {
-        "thought": "I need to solve this problem step by step",
-        "thought_number": 1,
-        "total_thoughts": 3,
-        "next_thought_needed": True
+        "thought": "Let me analyze this problem step by step",
+        "total_thoughts": 3
+        # thought_number auto-assigned: 1
+        # next_thought_needed auto-assigned: True (1 < 3)
+    })
+```
+
+#### With Enhanced Features
+
+```python
+async with Client(mcp) as client:
+    # With confidence scoring and explicit session
+    result = await client.call_tool("ultrathink", {
+        "thought": "Initial hypothesis - this approach might work",
+        "total_thoughts": 5,
+        "confidence": 0.6,  # 60% confident
+        # next_thought_needed auto-assigned: True
+        "session_id": "problem-solving-session-1"
+    })
+
+    # Continue the same session with higher confidence
+    result2 = await client.call_tool("ultrathink", {
+        "thought": "After analysis, I'm more certain about this solution",
+        "total_thoughts": 5,
+        "confidence": 0.9,  # 90% confident
+        # next_thought_needed auto-assigned: True
+        "session_id": "problem-solving-session-1"  # Same session
+    })
+
+    # Branch from a previous thought
+    result3 = await client.call_tool("ultrathink", {
+        "thought": "Let me explore an alternative approach",
+        "total_thoughts": 6,
+        "confidence": 0.7,
+        "branch_from_thought": 1,
+        "branch_id": "alternative-path",
+        # next_thought_needed auto-assigned: True
+        "session_id": "problem-solving-session-1"
     })
 ```
 

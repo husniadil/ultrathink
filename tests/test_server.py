@@ -127,19 +127,61 @@ class TestUltraThinkService:
         with pytest.raises(ValidationError):
             ThoughtRequest(**input_data)  # type: ignore[arg-type]
 
-    def test_reject_missing_next_thought_needed(
+    def test_auto_assign_next_thought_true_when_not_final(
         self, server: UltraThinkService
     ) -> None:
-        """Should reject input with missing next_thought_needed"""
-        input_data = {
-            "thought": "Test thought",
-            "thought_number": 1,
-            "total_thoughts": 3,
-        }
+        """Should auto-assign next_thought_needed=True when thought_number < total_thoughts"""
+        request = ThoughtRequest(
+            thought="First thought",
+            thought_number=1,
+            total_thoughts=3,
+            # next_thought_needed omitted - should be auto-assigned as True
+        )
 
-        with pytest.raises(ValidationError) as exc_info:
-            ThoughtRequest(**input_data)  # type: ignore[arg-type]
-        assert "next_thought_needed" in str(exc_info.value).lower()
+        response = server.process_thought(request)
+        assert response.next_thought_needed is True
+        assert response.thought_number == 1
+        assert response.total_thoughts == 3
+
+    def test_auto_assign_next_thought_false_when_final(
+        self, server: UltraThinkService
+    ) -> None:
+        """Should auto-assign next_thought_needed=False when thought_number == total_thoughts"""
+        request = ThoughtRequest(
+            thought="Final thought",
+            thought_number=3,
+            total_thoughts=3,
+            # next_thought_needed omitted - should be auto-assigned as False
+        )
+
+        response = server.process_thought(request)
+        assert response.next_thought_needed is False
+        assert response.thought_number == 3
+        assert response.total_thoughts == 3
+
+    def test_explicit_next_thought_overrides_auto(
+        self, server: UltraThinkService
+    ) -> None:
+        """Should respect explicit next_thought_needed value over auto-assignment"""
+        # Case 1: Explicitly set to False when not final (early termination)
+        request1 = ThoughtRequest(
+            thought="Ending early",
+            thought_number=2,
+            total_thoughts=5,
+            next_thought_needed=False,  # Explicit False
+        )
+        response1 = server.process_thought(request1)
+        assert response1.next_thought_needed is False
+
+        # Case 2: Explicitly set to True when at final (extending)
+        request2 = ThoughtRequest(
+            thought="Continuing beyond estimate",
+            thought_number=5,
+            total_thoughts=5,
+            next_thought_needed=True,  # Explicit True
+        )
+        response2 = server.process_thought(request2)
+        assert response2.next_thought_needed is True
 
     def test_reject_non_boolean_next_thought_needed(
         self, server: UltraThinkService
@@ -455,19 +497,6 @@ class TestUltraThinkService:
         assert hasattr(response, "next_thought_needed")
         assert hasattr(response, "branches")
         assert hasattr(response, "thought_history_length")
-
-    def test_raise_validation_error_on_invalid_request(
-        self, server: UltraThinkService
-    ) -> None:
-        """Should raise ValidationError on invalid request"""
-        with pytest.raises(ValidationError) as exc_info:
-            ThoughtRequest(  # type: ignore[call-arg]
-                thought="Test",
-                thought_number=1,
-                total_thoughts=1,
-                # missing next_thought_needed
-            )
-        assert "next_thought_needed" in str(exc_info.value).lower()
 
     def test_return_pydantic_model_instance(self, server: UltraThinkService) -> None:
         """Should return Pydantic model instance"""
