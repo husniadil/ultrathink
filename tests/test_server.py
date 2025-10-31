@@ -116,6 +116,34 @@ class TestUltraThinkService:
         with pytest.raises(ValidationError):
             ThoughtRequest(**input_data)  # type: ignore[arg-type]
 
+    def test_reject_confidence_below_zero(self, server: UltraThinkService) -> None:
+        """Should reject confidence value below 0.0"""
+        input_data = {
+            "thought": "Test thought",
+            "thought_number": 1,
+            "total_thoughts": 3,
+            "next_thought_needed": True,
+            "confidence": -0.1,
+        }
+
+        with pytest.raises(ValidationError) as exc_info:
+            ThoughtRequest(**input_data)  # type: ignore[arg-type]
+        assert "confidence" in str(exc_info.value).lower()
+
+    def test_reject_confidence_above_one(self, server: UltraThinkService) -> None:
+        """Should reject confidence value above 1.0"""
+        input_data = {
+            "thought": "Test thought",
+            "thought_number": 1,
+            "total_thoughts": 3,
+            "next_thought_needed": True,
+            "confidence": 1.5,
+        }
+
+        with pytest.raises(ValidationError) as exc_info:
+            ThoughtRequest(**input_data)  # type: ignore[arg-type]
+        assert "confidence" in str(exc_info.value).lower()
+
     # Valid input tests
     def test_accept_valid_basic_thought(self, server: UltraThinkService) -> None:
         """Should accept valid basic thought"""
@@ -151,6 +179,21 @@ class TestUltraThinkService:
         assert isinstance(response, ThoughtResponse)
         assert response.thought_number == 2
         assert response.thought_history_length == 1
+
+    def test_accept_thought_with_confidence(self, server: UltraThinkService) -> None:
+        """Should accept thought with valid confidence value"""
+        request = ThoughtRequest(
+            thought="High confidence thought",
+            thought_number=1,
+            total_thoughts=3,
+            next_thought_needed=True,
+            confidence=0.85,
+        )
+
+        response = server.process_thought(request)
+        assert isinstance(response, ThoughtResponse)
+        assert response.confidence == 0.85
+        assert response.thought_number == 1
 
     def test_track_multiple_thoughts_in_history(
         self, server: UltraThinkService

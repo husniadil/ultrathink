@@ -153,6 +153,53 @@ async def test_ultrathink() -> None:
         print(f"  Thought 4/4: {response_nm4}")
         print()
 
+        # Test with confidence scoring
+        print("🎯 Testing confidence scoring...")
+        print("Problem: Is 97 a prime number?\n")
+
+        # Low confidence - exploratory
+        result_c1 = await client.call_tool(
+            "ultrathink",
+            {
+                "thought": "I need to check if 97 is divisible by small primes. Not sure yet.",
+                "thought_number": 1,
+                "total_thoughts": 3,
+                "next_thought_needed": True,
+                "confidence": 0.5,
+            },
+        )
+        response_c1 = result_c1.content[0].text
+        print(f"  Low confidence (50%): {response_c1}")
+
+        # Medium confidence - analyzing
+        result_c2 = await client.call_tool(
+            "ultrathink",
+            {
+                "thought": "Checked 2, 3, 5, 7. None divide 97. Looks prime but need to verify up to sqrt(97) ≈ 9.8",
+                "thought_number": 2,
+                "total_thoughts": 3,
+                "next_thought_needed": True,
+                "confidence": 0.75,
+            },
+        )
+        response_c2 = result_c2.content[0].text
+        print(f"  Medium confidence (75%): {response_c2}")
+
+        # High confidence - conclusion
+        result_c3 = await client.call_tool(
+            "ultrathink",
+            {
+                "thought": "Verified: 97 is not divisible by any prime up to 9. Therefore, 97 is prime.",
+                "thought_number": 3,
+                "total_thoughts": 3,
+                "next_thought_needed": False,
+                "confidence": 0.95,
+            },
+        )
+        response_c3 = result_c3.content[0].text
+        print(f"  High confidence (95%): {response_c3}")
+        print()
+
         print("✅ All tests passed!")
 
 

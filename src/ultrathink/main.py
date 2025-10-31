@@ -45,6 +45,15 @@ def ultrathink(
     needs_more_thoughts: Annotated[
         bool | None, Field(None, description="If more thoughts are needed")
     ] = None,
+    confidence: Annotated[
+        float | None,
+        Field(
+            None,
+            ge=0.0,
+            le=1.0,
+            description="Confidence level (0.0-1.0, e.g., 0.7 for 70% confident)",
+        ),
+    ] = None,
 ) -> ThoughtResponse:
     """
     A detailed tool for dynamic and reflective problem-solving through thoughts.
@@ -89,21 +98,25 @@ def ultrathink(
     - branch_from_thought: If branching, which thought number is the branching point
     - branch_id: Identifier for the current branch (if any)
     - needs_more_thoughts: If reaching end but realizing more thoughts needed
+    - confidence: Optional confidence level (0.0-1.0) expressing certainty about this thought
 
     Example usage:
 
-    Thought 1: "I need to design a caching strategy. Let me first consider the access patterns..."
-    Thought 2: "Based on access patterns, I see two viable approaches: LRU or LFU..."
-    Thought 3 (revision of 2): "Wait, I should also consider TTL-based expiration..."
-    Thought 4 (branch from 2): "Let me explore a hybrid approach combining LRU with TTL..."
-    Thought 5: "The hybrid approach addresses both requirements. Final recommendation: ..."
+    Thought 1 (confidence: 0.6): "I need to design a caching strategy. Let me first consider the access patterns..."
+    Thought 2 (confidence: 0.7): "Based on access patterns, I see two viable approaches: LRU or LFU..."
+    Thought 3 (revision of 2, confidence: 0.75): "Wait, I should also consider TTL-based expiration..."
+    Thought 4 (branch from 2, confidence: 0.8): "Let me explore a hybrid approach combining LRU with TTL..."
+    Thought 5 (confidence: 0.95): "The hybrid approach addresses both requirements. Final recommendation: ..."
 
     Usage guide:
     1. Start with an initial estimate of needed thoughts, be ready to adjust total_thoughts as you progress
     2. Question or revise previous thoughts using is_revision=true and revises_thought parameters
     3. Explore alternative reasoning paths using branch_from_thought and branch_id parameters
     4. Add more thoughts if needed, even after reaching what seemed like the end
-    5. Express uncertainty when present - this is valuable information
+    5. Express uncertainty using the confidence parameter (0.0=very uncertain, 1.0=very certain)
+       - Low confidence (0.3-0.6): Exploratory thinking, initial hypotheses, uncertain analysis
+       - Medium confidence (0.6-0.8): Reasoned analysis, likely conclusions, working hypotheses
+       - High confidence (0.8-1.0): Verified solutions, confident conclusions, proven facts
     6. Clearly state what you're analyzing or deciding in each thought
     7. Ignore information that is irrelevant to the current step
     8. Generate solution hypotheses as you develop understanding
@@ -123,5 +136,6 @@ def ultrathink(
         branch_from_thought=branch_from_thought,
         branch_id=branch_id,
         needs_more_thoughts=needs_more_thoughts,
+        confidence=confidence,
     )
     return thinking_service.process_thought(request)

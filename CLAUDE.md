@@ -75,7 +75,7 @@ src/ultrathink/          # Main package
 ├── session.py           # ThinkingSession aggregate root
 └── service.py           # UltraThinkService application service
 
-tests/                   # Test files (35 tests, 100% coverage)
+tests/                   # Test files (41 tests, 100% coverage)
 ├── test_server.py       # Server tests (validation, functionality, branching)
 ├── test_thought.py      # Thought entity tests (properties, formatting)
 ├── test_logging.py      # Logging and formatting tests

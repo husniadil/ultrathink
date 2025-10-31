@@ -2,12 +2,7 @@
   "mcpServers": {
     "UltraThink": {
       "command": "uv",
-      "args": [
-        "--directory",
-        "/path/to/ultrathink",
-        "run",
-        "ultrathink"
-      ],
+      "args": ["--directory", "/path/to/ultrathink", "run", "ultrathink"],
       "env": {
         "DISABLE_THOUGHT_LOGGING": "false"
       }

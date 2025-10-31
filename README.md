@@ -9,9 +9,10 @@ This is a Python port of the [TypeScript sequential thinking MCP server](https:/
 - **UltraThink**: Break down complex problems into manageable steps
 - **Dynamic Adjustments**: Revise and refine thoughts as understanding deepens
 - **Branching**: Explore alternative paths of reasoning
+- **Confidence Scoring**: Explicit uncertainty tracking (0.0-1.0 scale)
 - **Auto-adjustment**: Automatically adjusts total thoughts if needed
 - **Formatted Logging**: Colored terminal output with rich formatting (can be disabled)
-- **100% Test Coverage**: Comprehensive test suite with 35 test cases
+- **100% Test Coverage**: Comprehensive test suite with 41 test cases
 - **Type Safety**: Full mypy strict mode type checking for production code
 - **DDD Architecture**: Clean domain model with entities, aggregates, and services
 
@@ -93,6 +94,7 @@ The server provides a single tool for dynamic and reflective problem-solving thr
 - `branch_from_thought` (int): Branching point thought number
 - `branch_id` (str): Branch identifier
 - `needs_more_thoughts` (bool): If more thoughts are needed
+- `confidence` (float): Confidence level (0.0-1.0, e.g., 0.7 for 70% confident)
 
 ### Response
 
@@ -103,6 +105,7 @@ Returns a JSON object with:
 - `nextThoughtNeeded`: Whether more thinking is needed
 - `branches`: List of branch IDs
 - `thoughtHistoryLength`: Number of thoughts processed
+- `confidence`: Confidence level of this thought (0.0-1.0, optional)
 
 ### Example
 
@@ -169,6 +172,7 @@ Example configuration (`.mcp.json.example`):
 ```
 
 This configuration:
+
 - Enables thought logging by default (`DISABLE_THOUGHT_LOGGING: "false"`)
 - Can be used with MCP clients that support `.mcp.json` configuration
 - Useful for testing the server locally with colored output enabled
@@ -182,8 +186,8 @@ Built with **Domain-Driven Design (DDD)** principles for clean separation of con
 
 **src/ultrathink/**
 
-- **__init__.py**: Package exports
-- **__main__.py**: CLI entry point (enables `uv run ultrathink`)
+- \***\*init**.py\*\*: Package exports
+- \***\*main**.py\*\*: CLI entry point (enables `uv run ultrathink`)
 - **main.py**: MCP server entry point with FastMCP tool registration
 - **dto.py**: Interface DTOs (ThoughtRequest, ThoughtResponse)
 - **thought.py**: Thought entity with validation and behaviors
@@ -367,20 +371,21 @@ The project uses **mypy in strict mode** across the entire codebase (`src/`, `te
 
 Tests are organized by concern for better maintainability:
 
-**test_server.py** (22 tests)
+**test_server.py** (25 tests)
 
-- Validation (8 tests): Parameter validation and error handling
-- Functionality (4 tests): Core features and thought tracking
+- Validation (10 tests): Parameter validation and error handling (including confidence range)
+- Functionality (5 tests): Core features and thought tracking (including confidence scoring)
 - Branching (2 tests): Alternative reasoning paths
 - Edge Cases (5 tests): Boundary conditions
 - Response Format (3 tests): Output structure validation
 
-**test_thought.py** (8 tests)
+**test_thought.py** (11 tests)
 
 - Entity Properties (2 tests): is_final, is_branch properties
 - Auto-adjustment (2 tests): Total thoughts adjustment logic
-- Formatting (3 tests): Visual output for regular, revision, and branch thoughts
+- Formatting (4 tests): Visual output for regular, revision, branch, and confidence display
 - Validation (1 test): Whitespace-only thought rejection
+- Confidence (2 tests): Confidence field validation and defaults
 
 **test_logging.py** (3 tests)
 

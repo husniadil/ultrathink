@@ -44,6 +44,15 @@ class ThoughtRequest(BaseModel):
     needs_more_thoughts: Annotated[
         bool | None, Field(None, description="If more thoughts are needed")
     ] = None
+    confidence: Annotated[
+        float | None,
+        Field(
+            None,
+            ge=0.0,
+            le=1.0,
+            description="Confidence level (0.0-1.0, e.g., 0.7 for 70% confident)",
+        ),
+    ] = None
 
     @field_validator("thought")
     @classmethod
@@ -74,3 +83,12 @@ class ThoughtResponse(BaseModel):
     thought_history_length: Annotated[
         int, Field(ge=0, description="Total number of thoughts processed in session")
     ]
+    confidence: Annotated[
+        float | None,
+        Field(
+            None,
+            ge=0.0,
+            le=1.0,
+            description="Confidence level of this thought (0.0-1.0)",
+        ),
+    ] = None

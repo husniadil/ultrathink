@@ -43,4 +43,5 @@ class UltraThinkService:
             next_thought_needed=thought.next_thought_needed,
             branches=self._session.branch_ids,
             thought_history_length=self._session.thought_count,
+            confidence=thought.confidence,
         )

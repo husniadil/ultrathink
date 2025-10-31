@@ -46,6 +46,15 @@ class Thought(BaseModel):
     needs_more_thoughts: Annotated[
         bool | None, Field(None, description="If more thoughts are needed")
     ] = None
+    confidence: Annotated[
+        float | None,
+        Field(
+            None,
+            ge=0.0,
+            le=1.0,
+            description="Confidence level (0.0-1.0, e.g., 0.7 for 70% confident)",
+        ),
+    ] = None
 
     @field_validator("thought")
     @classmethod
@@ -89,7 +98,13 @@ class Thought(BaseModel):
             context = ""
             color = "blue"
 
-        header = f"{prefix} {self.thought_number}/{self.total_thoughts}{context}"
+        # Add confidence display if present
+        confidence_str = (
+            f" [Confidence: {self.confidence:.0%}]"
+            if self.confidence is not None
+            else ""
+        )
+        header = f"{prefix} {self.thought_number}/{self.total_thoughts}{context}{confidence_str}"
         border_length = max(len(header), len(self.thought)) + 4
         border = "─" * border_length
 

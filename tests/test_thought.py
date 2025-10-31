@@ -135,3 +135,39 @@ class TestThought:
                 next_thought_needed=False,
             )
         assert "non-empty" in str(exc_info.value).lower()
+
+    def test_confidence_field(self) -> None:
+        """Should accept valid confidence values"""
+        thought = Thought(
+            thought="High confidence thought",
+            thought_number=1,
+            total_thoughts=3,
+            next_thought_needed=True,
+            confidence=0.85,
+        )
+        assert thought.confidence == 0.85
+
+    def test_confidence_none_by_default(self) -> None:
+        """Should default confidence to None when not provided"""
+        thought = Thought(
+            thought="No confidence",
+            thought_number=1,
+            total_thoughts=3,
+            next_thought_needed=True,
+        )
+        assert thought.confidence is None
+
+    def test_format_thought_with_confidence(self) -> None:
+        """Should format thought with confidence percentage"""
+        thought = Thought(
+            thought="Confident thought",
+            thought_number=1,
+            total_thoughts=3,
+            next_thought_needed=True,
+            confidence=0.75,
+        )
+
+        formatted = thought.format()
+        assert "Confidence: 75%" in formatted
+        assert "💭 Thought" in formatted
+        assert "1/3" in formatted
