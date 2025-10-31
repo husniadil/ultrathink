@@ -34,6 +34,10 @@ class ThinkingSession:
         # Auto-adjust total if needed
         thought.auto_adjust_total()
 
+        # Validate references before adding (aggregate root enforces invariants)
+        existing_numbers = {t.thought_number for t in self._thoughts}
+        thought.validate_references(existing_numbers)
+
         # Add to history
         self._thoughts.append(thought)
 

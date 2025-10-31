@@ -78,6 +78,30 @@ class Thought(BaseModel):
         if self.thought_number > self.total_thoughts:
             self.total_thoughts = self.thought_number
 
+    def validate_references(self, existing_thought_numbers: set[int]) -> None:
+        """
+        Validate that referenced thoughts exist in history
+
+        Args:
+            existing_thought_numbers: Set of thought numbers that exist in session
+
+        Raises:
+            ValueError: If referenced thought does not exist
+        """
+        if self.is_revision and self.revises_thought is not None:
+            if self.revises_thought not in existing_thought_numbers:
+                raise ValueError(
+                    f"Cannot revise thought {self.revises_thought}: "
+                    f"thought does not exist in history"
+                )
+
+        if self.is_branch and self.branch_from_thought is not None:
+            if self.branch_from_thought not in existing_thought_numbers:
+                raise ValueError(
+                    f"Cannot branch from thought {self.branch_from_thought}: "
+                    f"thought does not exist in history"
+                )
+
     def format(self) -> str:
         """Format this thought for display with colors and borders"""
         prefix = ""

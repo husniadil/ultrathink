@@ -35,7 +35,17 @@ class TestLogging:
         self, server_with_logging: UltraThinkService
     ) -> None:
         """Should format and log revision thoughts"""
-        request = ThoughtRequest(
+        # Create original thought first
+        request1 = ThoughtRequest(
+            thought="Original thought",
+            thought_number=1,
+            total_thoughts=3,
+            next_thought_needed=True,
+        )
+        server_with_logging.process_thought(request1)
+
+        # Now revise it
+        request2 = ThoughtRequest(
             thought="Revised thought",
             thought_number=2,
             total_thoughts=3,
@@ -44,14 +54,24 @@ class TestLogging:
             revises_thought=1,
         )
 
-        response = server_with_logging.process_thought(request)
+        response = server_with_logging.process_thought(request2)
         assert isinstance(response, ThoughtResponse)
 
     def test_format_and_log_branch_thoughts(
         self, server_with_logging: UltraThinkService
     ) -> None:
         """Should format and log branch thoughts"""
-        request = ThoughtRequest(
+        # Create original thought first
+        request1 = ThoughtRequest(
+            thought="Original thought",
+            thought_number=1,
+            total_thoughts=3,
+            next_thought_needed=True,
+        )
+        server_with_logging.process_thought(request1)
+
+        # Now branch from it
+        request2 = ThoughtRequest(
             thought="Branch thought",
             thought_number=2,
             total_thoughts=3,
@@ -60,5 +80,5 @@ class TestLogging:
             branch_id="branch-a",
         )
 
-        response = server_with_logging.process_thought(request)
+        response = server_with_logging.process_thought(request2)
         assert isinstance(response, ThoughtResponse)

@@ -165,7 +165,17 @@ class TestUltraThinkService:
         self, server: UltraThinkService
     ) -> None:
         """Should accept thought with optional fields"""
-        request = ThoughtRequest(
+        # Create original thought first
+        request1 = ThoughtRequest(
+            thought="Original idea",
+            thought_number=1,
+            total_thoughts=3,
+            next_thought_needed=True,
+        )
+        server.process_thought(request1)
+
+        # Now revise with optional fields
+        request2 = ThoughtRequest(
             thought="Revising my earlier idea",
             thought_number=2,
             total_thoughts=3,
@@ -175,10 +185,10 @@ class TestUltraThinkService:
             needs_more_thoughts=False,
         )
 
-        response = server.process_thought(request)
+        response = server.process_thought(request2)
         assert isinstance(response, ThoughtResponse)
         assert response.thought_number == 2
-        assert response.thought_history_length == 1
+        assert response.thought_history_length == 2
 
     def test_accept_thought_with_confidence(self, server: UltraThinkService) -> None:
         """Should accept thought with valid confidence value"""
@@ -276,18 +286,28 @@ class TestUltraThinkService:
         self, server: UltraThinkService
     ) -> None:
         """Should allow multiple thoughts in same branch"""
+        # Create original thought first
+        request0 = ThoughtRequest(
+            thought="Original thought",
+            thought_number=1,
+            total_thoughts=3,
+            next_thought_needed=True,
+        )
+        server.process_thought(request0)
+
+        # Now create multiple thoughts in same branch
         request1 = ThoughtRequest(
             thought="Branch thought 1",
-            thought_number=1,
-            total_thoughts=2,
+            thought_number=2,
+            total_thoughts=3,
             next_thought_needed=True,
             branch_from_thought=1,
             branch_id="branch-a",
         )
         request2 = ThoughtRequest(
             thought="Branch thought 2",
-            thought_number=2,
-            total_thoughts=2,
+            thought_number=3,
+            total_thoughts=3,
             next_thought_needed=False,
             branch_from_thought=1,
             branch_id="branch-a",
@@ -411,3 +431,169 @@ class TestUltraThinkService:
         assert isinstance(response_dict, dict)
         assert "thought_number" in response_dict
         assert "total_thoughts" in response_dict
+
+    # Reference validation tests
+    def test_accept_valid_revision_to_existing_thought(
+        self, server: UltraThinkService
+    ) -> None:
+        """Should accept revision when referenced thought exists"""
+        # Add first thought
+        request1 = ThoughtRequest(
+            thought="Original thought",
+            thought_number=1,
+            total_thoughts=3,
+            next_thought_needed=True,
+        )
+        server.process_thought(request1)
+
+        # Revise it - should succeed
+        request2 = ThoughtRequest(
+            thought="Revised thought",
+            thought_number=2,
+            total_thoughts=3,
+            next_thought_needed=True,
+            is_revision=True,
+            revises_thought=1,
+        )
+        response = server.process_thought(request2)
+
+        assert isinstance(response, ThoughtResponse)
+        assert response.thought_history_length == 2
+
+    def test_reject_revision_to_nonexistent_thought(
+        self, server: UltraThinkService
+    ) -> None:
+        """Should reject revision when referenced thought does not exist"""
+        request = ThoughtRequest(
+            thought="Revising nonexistent thought",
+            thought_number=1,
+            total_thoughts=3,
+            next_thought_needed=True,
+            is_revision=True,
+            revises_thought=99,
+        )
+
+        with pytest.raises(ValueError) as exc_info:
+            server.process_thought(request)
+
+        assert "Cannot revise thought 99" in str(exc_info.value)
+        assert "does not exist" in str(exc_info.value)
+
+    def test_accept_valid_branch_from_existing_thought(
+        self, server: UltraThinkService
+    ) -> None:
+        """Should accept branch when referenced thought exists"""
+        # Add first thought
+        request1 = ThoughtRequest(
+            thought="Main thought",
+            thought_number=1,
+            total_thoughts=3,
+            next_thought_needed=True,
+        )
+        server.process_thought(request1)
+
+        # Branch from it - should succeed
+        request2 = ThoughtRequest(
+            thought="Branch thought",
+            thought_number=2,
+            total_thoughts=3,
+            next_thought_needed=True,
+            branch_from_thought=1,
+            branch_id="branch-a",
+        )
+        response = server.process_thought(request2)
+
+        assert isinstance(response, ThoughtResponse)
+        assert response.thought_history_length == 2
+        assert "branch-a" in response.branches
+
+    def test_reject_branch_from_nonexistent_thought(
+        self, server: UltraThinkService
+    ) -> None:
+        """Should reject branch when referenced thought does not exist"""
+        request = ThoughtRequest(
+            thought="Branching from nonexistent thought",
+            thought_number=1,
+            total_thoughts=3,
+            next_thought_needed=True,
+            branch_from_thought=99,
+            branch_id="branch-a",
+        )
+
+        with pytest.raises(ValueError) as exc_info:
+            server.process_thought(request)
+
+        assert "Cannot branch from thought 99" in str(exc_info.value)
+        assert "does not exist" in str(exc_info.value)
+
+    def test_accept_first_thought_without_references(
+        self, server: UltraThinkService
+    ) -> None:
+        """Should accept first thought without revision or branch"""
+        request = ThoughtRequest(
+            thought="First thought",
+            thought_number=1,
+            total_thoughts=3,
+            next_thought_needed=True,
+        )
+
+        response = server.process_thought(request)
+        assert isinstance(response, ThoughtResponse)
+        assert response.thought_history_length == 1
+
+    def test_reject_first_thought_with_revision(
+        self, server: UltraThinkService
+    ) -> None:
+        """Should reject first thought that tries to revise nonexistent thought"""
+        request = ThoughtRequest(
+            thought="First thought with revision",
+            thought_number=1,
+            total_thoughts=3,
+            next_thought_needed=True,
+            is_revision=True,
+            revises_thought=1,
+        )
+
+        with pytest.raises(ValueError) as exc_info:
+            server.process_thought(request)
+
+        assert "Cannot revise thought 1" in str(exc_info.value)
+        assert "does not exist" in str(exc_info.value)
+
+    def test_allow_revision_and_branch_to_same_thought(
+        self, server: UltraThinkService
+    ) -> None:
+        """Should allow multiple thoughts to reference the same thought"""
+        # Add first thought
+        request1 = ThoughtRequest(
+            thought="Main thought",
+            thought_number=1,
+            total_thoughts=4,
+            next_thought_needed=True,
+        )
+        server.process_thought(request1)
+
+        # Revise it
+        request2 = ThoughtRequest(
+            thought="Revision of main",
+            thought_number=2,
+            total_thoughts=4,
+            next_thought_needed=True,
+            is_revision=True,
+            revises_thought=1,
+        )
+        server.process_thought(request2)
+
+        # Branch from same thought - should succeed
+        request3 = ThoughtRequest(
+            thought="Branch from main",
+            thought_number=3,
+            total_thoughts=4,
+            next_thought_needed=True,
+            branch_from_thought=1,
+            branch_id="branch-a",
+        )
+        response = server.process_thought(request3)
+
+        assert isinstance(response, ThoughtResponse)
+        assert response.thought_history_length == 3
