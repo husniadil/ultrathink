@@ -19,13 +19,25 @@ This is a Python port of the [TypeScript sequential thinking MCP server](https:/
 
 ## Installation
 
+### Quick Install (Recommended)
+
+Run directly with uvx from GitHub (no installation needed):
+
 ```bash
+uvx --from git+https://github.com/husniadil/ultrathink ultrathink
+```
+
+### Development Setup
+
+For local development:
+
+```bash
+# Clone the repository
+git clone https://github.com/husniadil/ultrathink.git
+cd ultrathink
+
 # Install all dependencies (including dev dependencies)
 uv sync
-
-# Or install manually
-uv add fastmcp==2.13.0.2 rich==14.2.0
-uv add --dev pytest==8.4.2 pytest-cov==7.0.0 taskipy==1.14.1 mypy>=1.18.2
 ```
 
 ## Usage
@@ -134,6 +146,27 @@ async with Client(mcp) as client:
 ### Usage with Claude Desktop
 
 Add to your `claude_desktop_config.json`:
+
+#### Using uvx from GitHub (Recommended)
+
+```json
+{
+  "mcpServers": {
+    "UltraThink": {
+      "command": "uvx",
+      "args": [
+        "--from",
+        "git+https://github.com/husniadil/ultrathink",
+        "ultrathink"
+      ]
+    }
+  }
+}
+```
+
+#### Local Development
+
+For local development from source:
 
 ```json
 {
@@ -404,22 +437,18 @@ Tests are organized by concern for better maintainability:
 
 **test_main.py**: Tool function invocation and CLI entry point
 
-## Differences from TypeScript Version
+## Credits
 
-While maintaining 100% feature parity, the Python version uses:
+This project is a Python port of the [Sequential Thinking MCP Server](https://github.com/modelcontextprotocol/servers/tree/main/src/sequentialthinking) by Anthropic, part of the Model Context Protocol servers collection. The original implementation provides the foundation for structured thinking and problem-solving.
 
-- **Pydantic** for validation instead of manual type checking
-- **Rich** for colored output instead of chalk
-- **pytest** for testing instead of vitest
-- **FastMCP** decorator pattern for tool registration
-- **Strict mode** in Pydantic to prevent type coercion
-- **DDD Architecture**:
-  - Interface DTOs for validation (`ThoughtRequest`, `ThoughtResponse`)
-  - Entities (`Thought`) with behaviors
-  - Aggregate Root (`ThinkingSession`) for domain logic
-  - Application Service (`UltraThinkService`) for orchestration
-  - Pure domain layer with no interface dependencies
+## New Features
+
+While maintaining full compatibility with the original design, UltraThink adds several enhancements:
+
+1. **Confidence Scoring** - Explicit uncertainty tracking with 0.0-1.0 scale for each thought
+2. **Auto-assigned Thought Numbers** - Optional thought numbering (auto-increments if omitted)
+3. **Multi-Session Support** - Manage multiple concurrent thinking sessions with session IDs
 
 ## License
 
-MIT
+[MIT](LICENSE)

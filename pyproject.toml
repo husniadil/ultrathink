@@ -1,5 +1,5 @@
 [project]
-name = "UltraThink"
+name = "ultrathink"
 version = "0.1.0"
 description = "MCP server for sequential thinking and problem solving"
 readme = "README.md"
