@@ -5,7 +5,7 @@
 **A Python MCP server for sequential thinking and problem-solving**
 
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
-[![FastMCP](https://img.shields.io/badge/FastMCP-2.13-green.svg)](https://github.com/jlowin/fastmcp)
+[![FastMCP](https://img.shields.io/badge/FastMCP-2.13.0.2-green.svg)](https://github.com/jlowin/fastmcp)
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 </div>
@@ -14,6 +14,9 @@
 
 > **Enhanced Python port** of the [Sequential Thinking MCP Server](https://github.com/modelcontextprotocol/servers/tree/main/src/sequentialthinking) by Anthropic.
 > Maintains full compatibility while adding **confidence scoring**, **auto-assigned thought numbers**, and **multi-session support**.
+
+> [!NOTE]
+> **Meta**: This MCP server was built iteratively using UltraThink itself - a practical example of the tool's capability to break down complex problems, manage architectural decisions, and maintain context across development sessions.
 
 ---
 
