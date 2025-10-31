@@ -1,0 +1,67 @@
+[project]
+name = "UltraThink"
+version = "0.1.0"
+description = "MCP server for sequential thinking and problem solving"
+readme = "README.md"
+requires-python = ">=3.12"
+authors = [
+    {name = "Husni Adil Makmur", email = "husni.adil@gmail.com"}
+]
+license = {text = "MIT"}
+keywords = ["mcp", "fastmcp", "sequential-thinking", "problem-solving", "llm", "ai"]
+dependencies = [
+    "fastmcp==2.13.0.2",
+    "rich==14.2.0",
+]
+
+[project.urls]
+Repository = "https://github.com/husniadil/ultrathink"
+Issues = "https://github.com/husniadil/ultrathink/issues"
+
+[project.scripts]
+ultrathink = "ultrathink.__main__:main"
+
+[tool.uv]
+package = true
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "mypy>=1.18.2",
+    "pytest==8.4.2",
+    "pytest-cov==7.0.0",
+    "taskipy==1.14.1",
+]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_any_unimported = false
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+check_untyped_defs = true
+strict_equality = true
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if __name__ == .__main__.:",
+]
+
+[tool.taskipy.tasks]
+format = "ruff format . && ruff check --fix . && npx prettier --write --ignore-path .gitignore ."
+lint = "ruff check src/ultrathink tests examples"
+typecheck = "mypy src/ultrathink tests examples"
+test = "pytest tests/ -v --cov=ultrathink --cov-report=term-missing"
+test-quick = "pytest tests/ -v"
+clean = "rm -rf .pytest_cache __pycache__ **/__pycache__ .coverage .mypy_cache"
+run = "uv run ultrathink"
+client = "uv run python examples/client.py"
