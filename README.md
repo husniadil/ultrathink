@@ -125,6 +125,8 @@ The server provides a single tool for dynamic and reflective problem-solving thr
 - `branch_id` (str): Branch identifier
 - `needs_more_thoughts` (bool): If more thoughts are needed
 - `confidence` (float): Confidence level (0.0-1.0, e.g., 0.7 for 70% confident)
+- `uncertainty_notes` (str): Optional explanation for doubts or concerns about this thought
+- `outcome` (str): What was achieved or expected as result of this thought
 
 ### Response
 
@@ -137,6 +139,8 @@ Returns a JSON object with:
 - `branches`: List of branch IDs
 - `thoughtHistoryLength`: Number of thoughts processed in this session
 - `confidence`: Confidence level of this thought (0.0-1.0, optional)
+- `uncertainty_notes`: Explanation for doubts or concerns (optional)
+- `outcome`: What was achieved or expected (optional)
 
 ### Example
 
@@ -188,6 +192,25 @@ async with Client(mcp) as client:
         # next_thought_needed auto-assigned: True
         "session_id": "problem-solving-session-1"
     })
+```
+
+#### With Uncertainty Notes and Outcome
+
+```python
+async with Client(mcp) as client:
+    # Track uncertainty and outcomes
+    result = await client.call_tool("ultrathink", {
+        "thought": "Testing the authentication fix",
+        "total_thoughts": 5,
+        "confidence": 0.8,
+        "uncertainty_notes": "Haven't tested under high load yet",
+        "outcome": "Login flow works for standard users"
+    })
+
+    # Response includes the new fields
+    print(result["confidence"])          # 0.8
+    print(result["uncertainty_notes"])   # "Haven't tested under high load yet"
+    print(result["outcome"])             # "Login flow works for standard users"
 ```
 
 ## Configuration

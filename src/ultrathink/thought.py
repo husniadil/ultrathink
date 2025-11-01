@@ -55,6 +55,20 @@ class Thought(BaseModel):
             description="Confidence level (0.0-1.0, e.g., 0.7 for 70% confident)",
         ),
     ] = None
+    uncertainty_notes: Annotated[
+        str | None,
+        Field(
+            None,
+            description="Optional explanation for uncertainty or doubts about this thought",
+        ),
+    ] = None
+    outcome: Annotated[
+        str | None,
+        Field(
+            None,
+            description="What was achieved or expected as result of this thought",
+        ),
+    ] = None
 
     @field_validator("thought")
     @classmethod
@@ -129,16 +143,58 @@ class Thought(BaseModel):
             else ""
         )
         header = f"{prefix} {self.thought_number}/{self.total_thoughts}{context}{confidence_str}"
-        border_length = max(len(header), len(self.thought)) + 4
+
+        # Build content lines to calculate max width
+        content_lines = []
+
+        # Uncertainty notes line (if present)
+        uncertainty_line = None
+        if self.uncertainty_notes:
+            uncertainty_line = f"⚠️  Uncertainty: {self.uncertainty_notes}"
+            content_lines.append(uncertainty_line)
+
+        # Main thought line
+        content_lines.append(self.thought)
+
+        # Outcome line (if present)
+        outcome_line = None
+        if self.outcome:
+            outcome_line = f"✓ Outcome: {self.outcome}"
+            content_lines.append(outcome_line)
+
+        # Calculate border length from longest line
+        all_lines = [header] + content_lines
+        border_length = max(len(line) for line in all_lines) + 4
         border = "─" * border_length
 
-        lines = [
-            f"┌{border}┐",
-            f"│ {header}{' ' * (border_length - len(header) - 2)}│",
-            f"├{border}┤",
-            f"│ {self.thought}{' ' * (border_length - len(self.thought) - 1)}│",
-            f"└{border}┘",
-        ]
+        # Build final formatted output
+        lines = [f"┌{border}┐"]
+
+        # Header
+        lines.append(f"│ {header}{' ' * (border_length - len(header) - 2)}│")
+
+        # Uncertainty notes (if present)
+        if uncertainty_line:
+            lines.append(
+                f"│ {uncertainty_line}{' ' * (border_length - len(uncertainty_line) - 2)}│"
+            )
+
+        # Separator
+        lines.append(f"├{border}┤")
+
+        # Main thought
+        lines.append(
+            f"│ {self.thought}{' ' * (border_length - len(self.thought) - 1)}│"
+        )
+
+        # Outcome (if present)
+        if outcome_line:
+            lines.append(
+                f"│ {outcome_line}{' ' * (border_length - len(outcome_line) - 2)}│"
+            )
+
+        # Bottom border
+        lines.append(f"└{border}┘")
 
         formatted = "\n".join(lines)
         return f"[{color}]{formatted}[/{color}]"

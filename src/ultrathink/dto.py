@@ -63,6 +63,20 @@ class ThoughtRequest(BaseModel):
             description="Confidence level (0.0-1.0, e.g., 0.7 for 70% confident)",
         ),
     ] = None
+    uncertainty_notes: Annotated[
+        str | None,
+        Field(
+            None,
+            description="Optional explanation for uncertainty or doubts about this thought",
+        ),
+    ] = None
+    outcome: Annotated[
+        str | None,
+        Field(
+            None,
+            description="What was achieved or expected as result of this thought",
+        ),
+    ] = None
 
     @field_validator("thought")
     @classmethod
@@ -101,5 +115,19 @@ class ThoughtResponse(BaseModel):
             ge=0.0,
             le=1.0,
             description="Confidence level of this thought (0.0-1.0)",
+        ),
+    ] = None
+    uncertainty_notes: Annotated[
+        str | None,
+        Field(
+            None,
+            description="Optional explanation for uncertainty or doubts about this thought",
+        ),
+    ] = None
+    outcome: Annotated[
+        str | None,
+        Field(
+            None,
+            description="What was achieved or expected as result of this thought",
         ),
     ] = None

@@ -171,3 +171,109 @@ class TestThought:
         assert "Confidence: 75%" in formatted
         assert "💭 Thought" in formatted
         assert "1/3" in formatted
+
+    def test_uncertainty_notes_field(self) -> None:
+        """Should accept uncertainty_notes string values"""
+        thought = Thought(
+            thought="Uncertain thought",
+            thought_number=1,
+            total_thoughts=3,
+            next_thought_needed=True,
+            uncertainty_notes="Haven't tested all edge cases yet",
+        )
+        assert thought.uncertainty_notes == "Haven't tested all edge cases yet"
+
+    def test_uncertainty_notes_none_by_default(self) -> None:
+        """Should default uncertainty_notes to None when not provided"""
+        thought = Thought(
+            thought="No uncertainty notes",
+            thought_number=1,
+            total_thoughts=3,
+            next_thought_needed=True,
+        )
+        assert thought.uncertainty_notes is None
+
+    def test_outcome_field(self) -> None:
+        """Should accept outcome string values"""
+        thought = Thought(
+            thought="Testing authentication fix",
+            thought_number=1,
+            total_thoughts=3,
+            next_thought_needed=True,
+            outcome="All tests passing, bug fixed",
+        )
+        assert thought.outcome == "All tests passing, bug fixed"
+
+    def test_outcome_none_by_default(self) -> None:
+        """Should default outcome to None when not provided"""
+        thought = Thought(
+            thought="No outcome",
+            thought_number=1,
+            total_thoughts=3,
+            next_thought_needed=True,
+        )
+        assert thought.outcome is None
+
+    def test_format_thought_with_uncertainty_notes(self) -> None:
+        """Should format thought with uncertainty notes"""
+        thought = Thought(
+            thought="Uncertain approach",
+            thought_number=1,
+            total_thoughts=3,
+            next_thought_needed=True,
+            uncertainty_notes="Not sure about performance impact",
+        )
+
+        formatted = thought.format()
+        assert "⚠️  Uncertainty: Not sure about performance impact" in formatted
+        assert "💭 Thought" in formatted
+        assert "1/3" in formatted
+
+    def test_format_thought_with_outcome(self) -> None:
+        """Should format thought with outcome"""
+        thought = Thought(
+            thought="Fixed the bug",
+            thought_number=1,
+            total_thoughts=3,
+            next_thought_needed=True,
+            outcome="Bug resolved successfully",
+        )
+
+        formatted = thought.format()
+        assert "✓ Outcome: Bug resolved successfully" in formatted
+        assert "💭 Thought" in formatted
+        assert "1/3" in formatted
+
+    def test_format_thought_with_both_new_fields(self) -> None:
+        """Should format thought with both uncertainty_notes and outcome"""
+        thought = Thought(
+            thought="Testing the fix",
+            thought_number=1,
+            total_thoughts=3,
+            next_thought_needed=True,
+            confidence=0.8,
+            uncertainty_notes="Haven't tested under load",
+            outcome="Basic tests pass",
+        )
+
+        formatted = thought.format()
+        assert "Confidence: 80%" in formatted
+        assert "⚠️  Uncertainty: Haven't tested under load" in formatted
+        assert "✓ Outcome: Basic tests pass" in formatted
+        assert "💭 Thought" in formatted
+        assert "1/3" in formatted
+
+    def test_format_thought_without_new_fields(self) -> None:
+        """Should format thought correctly when new fields are not provided (backward compat)"""
+        thought = Thought(
+            thought="Simple thought",
+            thought_number=1,
+            total_thoughts=3,
+            next_thought_needed=True,
+        )
+
+        formatted = thought.format()
+        assert "💭 Thought" in formatted
+        assert "1/3" in formatted
+        assert "⚠️  Uncertainty" not in formatted
+        assert "✓ Outcome" not in formatted

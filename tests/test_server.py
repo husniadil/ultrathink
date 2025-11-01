@@ -872,3 +872,78 @@ class TestUltraThinkService:
         assert len(response2.branches) == 1
         # Should not have branch-a
         assert "branch-a" not in response2.branches
+
+    # New fields tests
+    def test_uncertainty_notes_in_request_and_response(
+        self, server: UltraThinkService
+    ) -> None:
+        """Should include uncertainty_notes in response when provided in request"""
+        request = ThoughtRequest(
+            thought="Testing with uncertainty",
+            total_thoughts=3,
+            confidence=0.7,
+            uncertainty_notes="Haven't tested all edge cases yet",
+        )
+
+        response = server.process_thought(request)
+        assert response.uncertainty_notes == "Haven't tested all edge cases yet"
+        assert response.confidence == 0.7
+
+    def test_outcome_in_request_and_response(self, server: UltraThinkService) -> None:
+        """Should include outcome in response when provided in request"""
+        request = ThoughtRequest(
+            thought="Testing with outcome",
+            total_thoughts=3,
+            outcome="All tests passing, bug fixed",
+        )
+
+        response = server.process_thought(request)
+        assert response.outcome == "All tests passing, bug fixed"
+
+    def test_both_new_fields_in_request_and_response(
+        self, server: UltraThinkService
+    ) -> None:
+        """Should include both uncertainty_notes and outcome in response"""
+        request = ThoughtRequest(
+            thought="Testing with both new fields",
+            total_thoughts=3,
+            confidence=0.8,
+            uncertainty_notes="Need to verify under load",
+            outcome="Basic functionality works",
+        )
+
+        response = server.process_thought(request)
+        assert response.confidence == 0.8
+        assert response.uncertainty_notes == "Need to verify under load"
+        assert response.outcome == "Basic functionality works"
+
+    def test_new_fields_none_by_default(self, server: UltraThinkService) -> None:
+        """Should default uncertainty_notes and outcome to None when not provided"""
+        request = ThoughtRequest(
+            thought="Simple thought without new fields",
+            total_thoughts=3,
+        )
+
+        response = server.process_thought(request)
+        assert response.uncertainty_notes is None
+        assert response.outcome is None
+
+    def test_backward_compatibility_with_new_fields(
+        self, server: UltraThinkService
+    ) -> None:
+        """Should work with old requests that don't include new fields"""
+        # Old-style request (pre-new-fields)
+        request = ThoughtRequest(
+            thought="Old-style request",
+            thought_number=1,
+            total_thoughts=3,
+            next_thought_needed=True,
+            confidence=0.9,
+        )
+
+        response = server.process_thought(request)
+        assert response.thought_number == 1
+        assert response.total_thoughts == 3
+        assert response.confidence == 0.9
+        assert response.uncertainty_notes is None
+        assert response.outcome is None

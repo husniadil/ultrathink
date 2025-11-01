@@ -78,4 +78,6 @@ class UltraThinkService:
             branches=session.branch_ids,
             thought_history_length=session.thought_count,
             confidence=thought.confidence,
+            uncertainty_notes=thought.uncertainty_notes,
+            outcome=thought.outcome,
         )

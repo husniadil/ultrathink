@@ -88,3 +88,56 @@ class TestLogging:
 
         response = server_with_logging.process_thought(request2)
         assert isinstance(response, ThoughtResponse)
+
+    def test_format_and_log_with_uncertainty_notes(
+        self, server_with_logging: UltraThinkService
+    ) -> None:
+        """Should format and log thoughts with uncertainty_notes"""
+        request = ThoughtRequest(
+            thought="Test thought with uncertainty",
+            thought_number=1,
+            total_thoughts=3,
+            next_thought_needed=True,
+            confidence=0.7,
+            uncertainty_notes="Not sure about edge cases",
+        )
+
+        response = server_with_logging.process_thought(request)
+        assert isinstance(response, ThoughtResponse)
+        assert response.uncertainty_notes == "Not sure about edge cases"
+
+    def test_format_and_log_with_outcome(
+        self, server_with_logging: UltraThinkService
+    ) -> None:
+        """Should format and log thoughts with outcome"""
+        request = ThoughtRequest(
+            thought="Test thought with outcome",
+            thought_number=1,
+            total_thoughts=3,
+            next_thought_needed=True,
+            outcome="Bug fixed successfully",
+        )
+
+        response = server_with_logging.process_thought(request)
+        assert isinstance(response, ThoughtResponse)
+        assert response.outcome == "Bug fixed successfully"
+
+    def test_format_and_log_with_both_new_fields(
+        self, server_with_logging: UltraThinkService
+    ) -> None:
+        """Should format and log thoughts with both uncertainty_notes and outcome"""
+        request = ThoughtRequest(
+            thought="Test thought with both new fields",
+            thought_number=1,
+            total_thoughts=3,
+            next_thought_needed=True,
+            confidence=0.85,
+            uncertainty_notes="Need more testing",
+            outcome="Partial success",
+        )
+
+        response = server_with_logging.process_thought(request)
+        assert isinstance(response, ThoughtResponse)
+        assert response.confidence == 0.85
+        assert response.uncertainty_notes == "Need more testing"
+        assert response.outcome == "Partial success"

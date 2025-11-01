@@ -64,6 +64,20 @@ def ultrathink(
             description="Confidence level (0.0-1.0, e.g., 0.7 for 70% confident)",
         ),
     ] = None,
+    uncertainty_notes: Annotated[
+        str | None,
+        Field(
+            None,
+            description="Optional explanation for uncertainty or doubts about this thought",
+        ),
+    ] = None,
+    outcome: Annotated[
+        str | None,
+        Field(
+            None,
+            description="What was achieved or expected as result of this thought",
+        ),
+    ] = None,
 ) -> ThoughtResponse:
     """
     A detailed tool for dynamic and reflective problem-solving through thoughts.
@@ -113,6 +127,8 @@ def ultrathink(
     - branch_id: Identifier for the current branch (if any)
     - needs_more_thoughts: If reaching end but realizing more thoughts needed
     - confidence: Optional confidence level (0.0-1.0) expressing certainty about this thought
+    - uncertainty_notes: Optional explanation for doubts or concerns (complements confidence score)
+    - outcome: What was achieved or expected as result of this thought
 
     Example usage:
 
@@ -157,5 +173,7 @@ def ultrathink(
         branch_id=branch_id,
         needs_more_thoughts=needs_more_thoughts,
         confidence=confidence,
+        uncertainty_notes=uncertainty_notes,
+        outcome=outcome,
     )
     return thinking_service.process_thought(request)
