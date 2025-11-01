@@ -160,6 +160,22 @@ def ultrathink(
     - Tasks that are already clear and unambiguous
     - Simple factual questions with direct answers
 
+    Usage notes:
+    - Each call returns a ThoughtResponse with session_id - use this to continue the same thinking session
+    - You can run multiple independent thinking sessions in parallel by using different session_ids
+    - The tool automatically manages thought numbering and determines if more thoughts are needed
+    - Use confidence scoring (0.0-1.0) to explicitly track uncertainty in your reasoning
+    - Session state is maintained in memory - reuse custom session_ids for resilient recovery
+    - The response is returned to you for tracking progress - communicate insights to the user as you think
+
+    Parameter groups:
+    - Core params: thought, total_thoughts (required)
+    - Auto-managed: thought_number, next_thought_needed (optional - auto-assigned if omitted)
+    - Session management: session_id (optional - None creates new session)
+    - Revision params: is_revision, revises_thought (use together)
+    - Branching params: branch_from_thought, branch_id (use together)
+    - Confidence tracking: confidence, uncertainty_notes, outcome (optional)
+
     Example usage:
 
     Thought 1 (confidence: 0.6): "I need to design a caching strategy. Let me first consider the access patterns..."
@@ -168,7 +184,7 @@ def ultrathink(
     Thought 4 (branch from 2, confidence: 0.8): "Let me explore a hybrid approach combining LRU with TTL..."
     Thought 5 (confidence: 0.95): "The hybrid approach addresses both requirements. Final recommendation: ..."
 
-    Usage guide:
+    Thinking workflow:
     1. Start with an initial estimate of needed thoughts, be ready to adjust total_thoughts as you progress
     2. Question or revise previous thoughts using is_revision=true and revises_thought parameters
     3. Explore alternative reasoning paths using branch_from_thought and branch_id parameters
