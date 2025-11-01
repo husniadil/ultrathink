@@ -1,10 +1,8 @@
-"""Tests for main module (tool function and CLI entry point)"""
+"""Tests for MCP server tool function"""
 
 import os
-from unittest.mock import patch
-from ultrathink.main import ultrathink
-from ultrathink.dto import ThoughtRequest
-from ultrathink.__main__ import main
+from ultrathink.infrastructure.mcp.server import ultrathink
+from ultrathink.dto.request import ThoughtRequest
 
 
 class TestUltraThinkTool:
@@ -44,13 +42,3 @@ class TestUltraThinkTool:
         assert response.thought_number == 1
         assert response.total_thoughts == 3
         assert response.next_thought_needed is True  # Auto-assigned
-
-
-class TestCLIEntryPoint:
-    """Test suite for CLI entry point"""
-
-    def test_main_function_calls_mcp_run(self) -> None:
-        """Should call mcp.run() when main() is invoked"""
-        with patch("ultrathink.main.mcp.run") as mock_run:
-            main()
-            mock_run.assert_called_once()

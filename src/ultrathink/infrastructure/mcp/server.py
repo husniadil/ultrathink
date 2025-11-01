@@ -1,8 +1,9 @@
 from typing import Annotated
 from pydantic import Field
 from fastmcp import FastMCP
-from .service import UltraThinkService
-from .dto import ThoughtRequest, ThoughtResponse
+from ...application.services.thinking_service import UltraThinkService
+from ...dto.request import ThoughtRequest
+from ...dto.response import ThoughtResponse
 
 mcp = FastMCP("UltraThink")
 

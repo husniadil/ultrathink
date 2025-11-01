@@ -66,34 +66,51 @@ This will test all available tools by connecting to the MCP server and calling e
 ### Project Structure
 
 ```
-src/ultrathink/          # Main package
-├── __init__.py          # Package exports
-├── __main__.py          # CLI entry point
-├── main.py              # FastMCP server & tool registration
-├── dto.py               # Interface DTOs (ThoughtRequest, ThoughtResponse)
-├── thought.py           # Thought entity with validation and behaviors
-├── session.py           # ThinkingSession aggregate root
-└── service.py           # UltraThinkService application service
+src/ultrathink/                    # Main package
+├── domain/                        # DOMAIN LAYER
+│   ├── entities/
+│   │   └── thought.py             # Thought entity with validation and behaviors
+│   └── aggregates/
+│       └── thinking_session.py    # ThinkingSession aggregate root
+├── application/                   # APPLICATION LAYER
+│   └── services/
+│       └── thinking_service.py    # UltraThinkService application service
+├── dto/                           # DATA TRANSFER OBJECTS
+│   ├── request.py                 # ThoughtRequest DTO
+│   └── response.py                # ThoughtResponse DTO
+├── infrastructure/                # INFRASTRUCTURE LAYER
+│   └── mcp/
+│       └── server.py              # FastMCP server & tool registration
+├── __init__.py                    # Package exports
+└── __main__.py                    # CLI entry point
 
-tests/                   # Test files (100% coverage)
-├── test_server.py       # Server tests (validation, functionality, branching, multi-session)
-├── test_thought.py      # Thought entity tests (properties, formatting)
-├── test_logging.py      # Logging and formatting tests
-└── test_main.py         # Main entry point and MCP server tests
+tests/                             # Test files (100% coverage, mirroring source structure)
+├── domain/
+│   ├── entities/
+│   │   └── test_thought.py        # Thought entity tests
+│   └── aggregates/
+│       └── test_session_logging.py # Session logging tests
+├── application/
+│   └── services/
+│       └── test_thinking_service.py # Service tests (validation, functionality, branching, multi-session)
+├── infrastructure/
+│   └── mcp/
+│       └── test_server.py         # MCP tool function tests
+└── test_cli.py                    # CLI entry point tests
 
-examples/                # Example/demo scripts
-└── client.py            # Test harness for the MCP server
+examples/                          # Example/demo scripts
+└── client.py                      # Test harness for the MCP server
 ```
 
 ### Core Structure
 
-- **src/ultrathink/main.py**: MCP server entry point using FastMCP
+- **src/ultrathink/infrastructure/mcp/server.py**: MCP server entry point using FastMCP
   - Define MCP server instance with `FastMCP(name)`
   - Register tools using `@mcp.tool` decorator
-  - Import from `.server` module
+  - Imports from application service layer
 
 - **src/ultrathink/**main**.py**: CLI entry point
-  - Imports `mcp` from `.main`
+  - Imports `mcp` from `.infrastructure.mcp.server`
   - Defines `main()` function that calls `mcp.run()`
   - Enables `uv run ultrathink` command
 
@@ -104,10 +121,10 @@ examples/                # Example/demo scripts
 
 ### Adding New Tools
 
-Tools are added in `src/ultrathink/main.py` by decorating functions with `@mcp.tool`:
+Tools are added in `src/ultrathink/infrastructure/mcp/server.py` by decorating functions with `@mcp.tool`:
 
 ```python
-from .service import UltraThinkService
+from ...application.services.thinking_service import UltraThinkService
 
 @mcp.tool
 def tool_name(param: type) -> return_type:
@@ -125,11 +142,12 @@ The FastMCP framework automatically:
 
 All tools should be tested:
 
-1. Unit tests organized by concern:
-   - `tests/test_server.py` - Server validation, functionality, branching, multi-session
-   - `tests/test_thought.py` - Thought entity properties and formatting
-   - `tests/test_logging.py` - Logging and formatted output
-   - `tests/test_main.py` - Main entry point and CLI
+1. Unit tests organized by DDD layers (mirroring source structure):
+   - `tests/domain/entities/test_thought.py` - Thought entity properties and formatting
+   - `tests/domain/aggregates/test_session_logging.py` - Session logging and formatted output
+   - `tests/application/services/test_thinking_service.py` - Service validation, functionality, branching, multi-session
+   - `tests/infrastructure/mcp/test_server.py` - MCP tool function tests
+   - `tests/test_cli.py` - CLI entry point tests
 2. Integration tests via `examples/client.py`:
    - Connect to server using in-memory transport
    - List available tools
@@ -144,9 +162,12 @@ When working with the codebase:
 # From external code
 from ultrathink import mcp, UltraThinkService, Thought
 
-# Within the package (relative imports)
-from .service import UltraThinkService
-from .thought import Thought
+# Within the package (relative imports following DDD layers)
+from ...application.services.thinking_service import UltraThinkService
+from ...domain.entities.thought import Thought
+from ...domain.aggregates.thinking_session import ThinkingSession
+from ...dto.request import ThoughtRequest
+from ...dto.response import ThoughtResponse
 ```
 
 ### Session Management

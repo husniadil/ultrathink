@@ -1,5 +1,5 @@
 import pytest
-from ultrathink.thought import Thought
+from ultrathink.domain.entities.thought import Thought
 
 
 class TestThought:

@@ -1,8 +1,9 @@
 import os
 import uuid
-from .thought import Thought
-from .session import ThinkingSession
-from .dto import ThoughtRequest, ThoughtResponse
+from ...domain.entities.thought import Thought
+from ...domain.aggregates.thinking_session import ThinkingSession
+from ...dto.request import ThoughtRequest
+from ...dto.response import ThoughtResponse
 
 
 class UltraThinkService:

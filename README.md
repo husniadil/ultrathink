@@ -318,22 +318,49 @@ Built with **Domain-Driven Design (DDD)** principles for clean separation of con
 
 ### Files
 
-**src/ultrathink/**
+**src/ultrathink/** (Folder-based DDD structure)
+
+**Domain Layer** (`domain/`)
+
+- **entities/thought.py**: Thought entity with validation and behaviors
+- **aggregates/thinking_session.py**: ThinkingSession aggregate root
+
+**Application Layer** (`application/`)
+
+- **services/thinking_service.py**: UltraThinkService application service
+
+**DTO Layer** (`dto/`)
+
+- **request.py**: ThoughtRequest DTO
+- **response.py**: ThoughtResponse DTO
+
+**Infrastructure Layer** (`infrastructure/`)
+
+- **mcp/server.py**: MCP server entry point with FastMCP tool registration
+
+**Root Files**
 
 - **\_\_init\_\_.py**: Package exports
 - **\_\_main\_\_.py**: CLI entry point (enables `uv run ultrathink`)
-- **main.py**: MCP server entry point with FastMCP tool registration
-- **dto.py**: Interface DTOs (ThoughtRequest, ThoughtResponse)
-- **thought.py**: Thought entity with validation and behaviors
-- **session.py**: ThinkingSession aggregate root
-- **service.py**: UltraThinkService application service
 
-**tests/** (100% coverage)
+**tests/** (100% coverage, mirroring source structure)
 
-- **test_server.py**: Server tests (validation, functionality, branching, multi-session)
-- **test_thought.py**: Thought entity tests (properties, formatting)
-- **test_logging.py**: Logging and formatting tests
-- **test_main.py**: Main entry point and MCP server tests
+**Domain Tests** (`domain/`)
+
+- **entities/test_thought.py**: Thought entity tests (properties, formatting)
+- **aggregates/test_session_logging.py**: Session logging and formatting tests
+
+**Application Tests** (`application/`)
+
+- **services/test_thinking_service.py**: Service tests (validation, functionality, branching, multi-session)
+
+**Infrastructure Tests** (`infrastructure/`)
+
+- **mcp/test_server.py**: MCP tool function tests
+
+**Root Test Files**
+
+- **test_cli.py**: CLI entry point tests
 
 **examples/**
 

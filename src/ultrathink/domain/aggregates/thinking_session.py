@@ -1,6 +1,6 @@
 import sys
 from rich.console import Console
-from .thought import Thought
+from ..entities.thought import Thought
 
 console = Console(file=sys.stderr)
 
