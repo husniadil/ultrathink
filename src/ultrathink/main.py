@@ -12,20 +12,36 @@ thinking_service = UltraThinkService()
 @mcp.tool
 def ultrathink(
     thought: Annotated[
-        str, Field(min_length=1, description="Your current thinking step")
+        str,
+        Field(
+            min_length=1,
+            description=(
+                "Your current thinking step. Can include: regular analytical steps, "
+                "revisions of previous thoughts, questions about previous decisions, "
+                "realizations about needing more analysis, changes in approach, "
+                "hypothesis generation, or hypothesis verification"
+            ),
+        ),
     ],
     total_thoughts: Annotated[
         int,
         Field(
             ge=1,
-            description="Estimated total thoughts needed (numeric value, e.g., 3, 5, 10)",
+            description=(
+                "Current estimate of thoughts needed (can be adjusted up/down as you progress). "
+                "Numeric value, e.g., 3, 5, 10"
+            ),
         ),
     ],
     next_thought_needed: Annotated[
         bool | None,
         Field(
             None,
-            description="Whether another thought step is needed (auto: true if thought_number < total_thoughts)",
+            description=(
+                "Whether another thought step is needed. Auto-assigned as "
+                "(thought_number < total_thoughts) if omitted. Set explicitly to override: "
+                "True to extend beyond total_thoughts, False to end early"
+            ),
         ),
     ] = None,
     thought_number: Annotated[
@@ -33,27 +49,60 @@ def ultrathink(
         Field(
             None,
             ge=1,
-            description="Current thought number (auto-assigned if omitted, or provide explicit number for branching/semantic control)",
+            description=(
+                "Current number in sequence. Auto-assigned sequentially if omitted (1, 2, 3...), "
+                "or provide explicit number for branching/semantic control"
+            ),
         ),
     ] = None,
     session_id: Annotated[
         str | None,
-        Field(None, description="Session identifier (None = create new session)"),
+        Field(
+            None,
+            description=(
+                "Optional session identifier for managing multiple thinking sessions. "
+                "None (default): creates new session with auto-generated UUID. "
+                "Provide session_id from previous response: continue that thinking session. "
+                "Provide custom string: create or resume session with that ID (resilient recovery)"
+            ),
+        ),
     ] = None,
     is_revision: Annotated[
-        bool | None, Field(None, description="Whether this revises previous thinking")
+        bool | None,
+        Field(
+            None,
+            description="Boolean indicating if this thought revises previous thinking. Use with revises_thought parameter",
+        ),
     ] = None,
     revises_thought: Annotated[
-        int | None, Field(None, ge=1, description="Which thought is being reconsidered")
+        int | None,
+        Field(
+            None,
+            ge=1,
+            description="If is_revision is true, which thought number is being reconsidered",
+        ),
     ] = None,
     branch_from_thought: Annotated[
-        int | None, Field(None, ge=1, description="Branching point thought number")
+        int | None,
+        Field(
+            None,
+            ge=1,
+            description="If branching, which thought number is the branching point. Use with branch_id parameter",
+        ),
     ] = None,
     branch_id: Annotated[
-        str | None, Field(None, description="Branch identifier")
+        str | None,
+        Field(
+            None,
+            description="Identifier for the current branch (if branching from a previous thought)",
+        ),
     ] = None,
     needs_more_thoughts: Annotated[
-        bool | None, Field(None, description="If more thoughts are needed")
+        bool | None,
+        Field(
+            None,
+            description="If reaching end but realizing more thoughts are needed beyond initial estimate",
+        ),
     ] = None,
     confidence: Annotated[
         float | None,
@@ -61,14 +110,19 @@ def ultrathink(
             None,
             ge=0.0,
             le=1.0,
-            description="Confidence level (0.0-1.0, e.g., 0.7 for 70% confident)",
+            description=(
+                "Confidence level (0.0-1.0) expressing certainty about this thought. "
+                "Low (0.3-0.6): exploratory thinking, initial hypotheses, uncertain analysis. "
+                "Medium (0.6-0.8): reasoned analysis, likely conclusions, working hypotheses. "
+                "High (0.8-1.0): verified solutions, confident conclusions, proven facts"
+            ),
         ),
     ] = None,
     uncertainty_notes: Annotated[
         str | None,
         Field(
             None,
-            description="Optional explanation for uncertainty or doubts about this thought",
+            description="Optional explanation for doubts or concerns (complements confidence score)",
         ),
     ] = None,
     outcome: Annotated[
@@ -105,31 +159,6 @@ def ultrathink(
     - Tasks that are already clear and unambiguous
     - Simple factual questions with direct answers
 
-    Parameters explained:
-    - thought: Your current thinking step, which can include:
-      * Regular analytical steps
-      * Revisions of previous thoughts
-      * Questions about previous decisions
-      * Realizations about needing more analysis
-      * Changes in approach
-      * Hypothesis generation
-      * Hypothesis verification
-    - next_thought_needed: Optional - auto-assigned as (thought_number < total_thoughts) if omitted. Set explicitly to override (e.g., True to extend beyond total_thoughts, False to end early)
-    - thought_number: Current number in sequence - auto-assigned sequentially if omitted (1, 2, 3...), or provide explicit number for branching/semantic control
-    - total_thoughts: Current estimate of thoughts needed (can be adjusted up/down)
-    - session_id: Optional session identifier for managing multiple thinking sessions
-      * None (default): Creates a new session with auto-generated UUID
-      * Provide a session_id from previous response: Continue that thinking session
-      * Provide a custom string: Create or resume session with that ID (resilient recovery)
-    - is_revision: A boolean indicating if this thought revises previous thinking
-    - revises_thought: If is_revision is true, which thought number is being reconsidered
-    - branch_from_thought: If branching, which thought number is the branching point
-    - branch_id: Identifier for the current branch (if any)
-    - needs_more_thoughts: If reaching end but realizing more thoughts needed
-    - confidence: Optional confidence level (0.0-1.0) expressing certainty about this thought
-    - uncertainty_notes: Optional explanation for doubts or concerns (complements confidence score)
-    - outcome: What was achieved or expected as result of this thought
-
     Example usage:
 
     Thought 1 (confidence: 0.6): "I need to design a caching strategy. Let me first consider the access patterns..."
@@ -149,16 +178,12 @@ def ultrathink(
        - Multiple problems: Use different session_ids for separate thinking contexts
        - Resilient recovery: Reuse the same custom session_id across reconnections
     6. Express uncertainty using the confidence parameter (0.0=very uncertain, 1.0=very certain)
-       - Low confidence (0.3-0.6): Exploratory thinking, initial hypotheses, uncertain analysis
-       - Medium confidence (0.6-0.8): Reasoned analysis, likely conclusions, working hypotheses
-       - High confidence (0.8-1.0): Verified solutions, confident conclusions, proven facts
     7. Clearly state what you're analyzing or deciding in each thought
     8. Ignore information that is irrelevant to the current step
     9. Generate solution hypotheses as you develop understanding
     10. Verify hypotheses through subsequent thinking steps
     11. Repeat the process until you reach a satisfactory solution
     12. Provide a single, ideally correct answer as the final output
-    13. The next_thought_needed parameter is auto-assigned based on progress (thought_number < total_thoughts). Only set it explicitly when you need to override the default behavior (e.g., to extend thinking beyond the initial estimate or to end early)
     """
     # Construct ThoughtRequest from flat parameters
     request = ThoughtRequest(
