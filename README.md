@@ -373,7 +373,7 @@ Pydantic models for data representation and validation:
 **ThinkingSession**: Session model managing thought history and branches
 
 ```python
-# Type-safe DTO usage
+# Type-safe model usage
 request = ThoughtRequest(
     thought="My thinking step",
     thought_number=1,
@@ -500,15 +500,24 @@ The project uses **mypy in strict mode** across the entire codebase (`src/`, `te
 
 ### Test Organization
 
-Tests are organized by concern for better maintainability:
+Tests are organized by layers, mirroring the source structure (100% coverage):
 
-**test_server.py**: Validation, functionality, branching, edge cases, response format, reference validation, and multi-session support
+**Models Layer Tests** (`tests/models/`)
 
-**test_thought.py**: Entity properties, auto-adjustment, formatting, validation, and confidence scoring
+- **test_thought.py**: Model properties, auto-adjustment, formatting, validation, and confidence scoring
+- **test_session.py**: Session logging and formatted output
 
-**test_logging.py**: Formatted logging for regular, revision, and branch thoughts
+**Services Layer Tests** (`tests/services/`)
 
-**test_main.py**: Tool function invocation and CLI entry point
+- **test_thinking_service.py**: Service validation, functionality, branching, edge cases, response format, reference validation, and multi-session support
+
+**Interface Layer Tests** (`tests/interface/`)
+
+- **test_mcp_server.py**: MCP tool function invocation
+
+**Root Tests**
+
+- **test_cli.py**: CLI entry point
 
 ## Credits
 
