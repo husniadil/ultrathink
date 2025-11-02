@@ -98,7 +98,7 @@ examples/                          # Example/demo scripts
   - Register tools using `@mcp.tool` decorator
   - Imports from services layer
 
-- **src/ultrathink/__main__.py**: CLI entry point
+- **src/ultrathink/\_\_main\_\_.py**: CLI entry point
   - Imports `mcp` from `.interface.mcp_server`
   - Defines `main()` function that calls `mcp.run()`
   - Enables `uv run ultrathink` command
