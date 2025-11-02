@@ -1,9 +1,8 @@
 import os
 from typing import Generator
 import pytest
-from ultrathink.application.services.thinking_service import UltraThinkService
-from ultrathink.dto.request import ThoughtRequest
-from ultrathink.dto.response import ThoughtResponse
+from ultrathink.services.thinking_service import UltraThinkService
+from ultrathink.models.thought import ThoughtRequest, ThoughtResponse
 
 
 class TestLogging:

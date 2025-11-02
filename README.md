@@ -31,7 +31,7 @@
 - **Formatted Logging**: Colored terminal output with rich formatting (can be disabled)
 - **100% Test Coverage**: Comprehensive test suite with full code coverage
 - **Type Safety**: Full mypy strict mode type checking for production code
-- **DDD Architecture**: Clean domain model with entities, aggregates, and services
+- **Simple Layered Architecture**: Clean separation with models, services, and interface layers
 
 ## Installation
 
@@ -314,29 +314,24 @@ This configuration:
 
 ## Architecture
 
-Built with **Domain-Driven Design (DDD)** principles for clean separation of concerns and maintainable code.
+Built with **Simple Layered Architecture** principles for clean separation of concerns and maintainable code.
 
 ### Files
 
-**src/ultrathink/** (Folder-based DDD structure)
+**src/ultrathink/** (3-layer structure)
 
-**Domain Layer** (`domain/`)
+**Models Layer** (`models/`)
 
-- **entities/thought.py**: Thought entity with validation and behaviors
-- **aggregates/thinking_session.py**: ThinkingSession aggregate root
+- **thought.py**: Thought, ThoughtRequest, ThoughtResponse models
+- **session.py**: ThinkingSession model
 
-**Application Layer** (`application/`)
+**Services Layer** (`services/`)
 
-- **services/thinking_service.py**: UltraThinkService application service
+- **thinking_service.py**: UltraThinkService business logic
 
-**DTO Layer** (`dto/`)
+**Interface Layer** (`interface/`)
 
-- **request.py**: ThoughtRequest DTO
-- **response.py**: ThoughtResponse DTO
-
-**Infrastructure Layer** (`infrastructure/`)
-
-- **mcp/server.py**: MCP server entry point with FastMCP tool registration
+- **mcp_server.py**: MCP server entry point with FastMCP tool registration
 
 **Root Files**
 
@@ -345,18 +340,18 @@ Built with **Domain-Driven Design (DDD)** principles for clean separation of con
 
 **tests/** (100% coverage, mirroring source structure)
 
-**Domain Tests** (`domain/`)
+**Models Tests** (`models/`)
 
-- **entities/test_thought.py**: Thought entity tests (properties, formatting)
-- **aggregates/test_session_logging.py**: Session logging and formatting tests
+- **test_thought.py**: Thought model tests (properties, formatting)
+- **test_session.py**: Session logging and formatting tests
 
-**Application Tests** (`application/`)
+**Services Tests** (`services/`)
 
-- **services/test_thinking_service.py**: Service tests (validation, functionality, branching, multi-session)
+- **test_thinking_service.py**: Service tests (validation, functionality, branching, multi-session)
 
-**Infrastructure Tests** (`infrastructure/`)
+**Interface Tests** (`interface/`)
 
-- **mcp/test_server.py**: MCP tool function tests
+- **test_mcp_server.py**: MCP tool function tests
 
 **Root Test Files**
 
@@ -366,14 +361,16 @@ Built with **Domain-Driven Design (DDD)** principles for clean separation of con
 
 - **client.py**: Test client demonstrating tool usage
 
-### DDD Layers
+### Architecture Layers
 
-#### 0. Interface DTOs
+#### 1. Models Layer
 
-Pydantic models for request/response validation at the interface boundary:
+Pydantic models for data representation and validation:
 
-**ThoughtRequest**: Input DTO from MCP clients with validation
-**ThoughtResponse**: Output DTO to MCP clients with structured data
+**Thought**: Core model representing a single thought with validation and behaviors
+**ThoughtRequest**: Input model from MCP clients with validation
+**ThoughtResponse**: Output model to MCP clients with structured data
+**ThinkingSession**: Session model managing thought history and branches
 
 ```python
 # Type-safe DTO usage
@@ -392,67 +389,19 @@ response = ThoughtResponse(
 )
 ```
 
-#### 1. Entity: `Thought`
+#### 2. Services Layer
 
-The core domain entity representing a single thought with:
+Business logic and orchestration:
 
-**Data:**
-
-- thought text, numbers, metadata
-- revision/branch information
-
-**Behaviors:**
-
-- `is_branch`: Check if thought is a branch
-- `is_final`: Check if thought is final
-- `auto_adjust_total()`: Auto-adjust total thoughts
-- `format()`: Format thought for display
-
-```python
-thought = Thought(
-    thought="My thinking step",
-    thought_number=1,
-    total_thoughts=3,
-    next_thought_needed=True
-)
-thought.auto_adjust_total()
-formatted = thought.format()
-```
-
-#### 2. Aggregate Root: `ThinkingSession`
-
-Manages the collection of thoughts and enforces business rules (Pure domain - no protocol knowledge):
+**UltraThinkService**: Orchestrates the thinking process
 
 **Responsibilities:**
 
-- Maintain thought history
-- Track branches
-- Enforce domain invariants
-- Coordinate logging
-
-**Public Interface:**
-
-- `add_thought(thought)`: Add thought to session
-- `thought_count`: Get total thoughts (property)
-- `branch_ids`: Get all branch IDs (property)
-
-```python
-session = ThinkingSession(disable_logging=False)
-session.add_thought(thought)
-count = session.thought_count
-branches = session.branch_ids
-```
-
-#### 3. Application Service: `UltraThinkService`
-
-Orchestrates the thinking process and handles DTO-to-domain translation:
-
-**Responsibilities:**
-
-- **DTO Translation**: `ThoughtRequest → Thought` entity (input)
-- **Domain Orchestration**: Delegate to `ThinkingSession`
-- **Response Building**: Domain state → `ThoughtResponse` DTO (output)
+- **Model Translation**: `ThoughtRequest → Thought` model (input)
+- **Business Logic**: Delegate to `ThinkingSession`
+- **Response Building**: Session state → `ThoughtResponse` model (output)
 - **Validation**: Leverages Pydantic for automatic validation
+- **Session Management**: Create and manage multiple thinking sessions
 
 **Key Method:**
 
@@ -462,13 +411,33 @@ Orchestrates the thinking process and handles DTO-to-domain translation:
 service = UltraThinkService()
 
 # Full flow:
-# 1. Receives ThoughtRequest DTO from interface layer
-# 2. Translates to Thought entity (domain layer)
-# 3. Calls session.add_thought() (domain logic)
-# 4. Builds ThoughtResponse DTO from domain state
-# 5. Returns response DTO
+# 1. Receives ThoughtRequest from interface layer
+# 2. Translates to Thought model
+# 3. Calls session.add_thought() (business logic)
+# 4. Builds ThoughtResponse from session state
+# 5. Returns response
 request = ThoughtRequest(thought="...", thought_number=1, ...)
 response = service.process_thought(request)
+```
+
+#### 3. Interface Layer
+
+External interface using FastMCP:
+
+**mcp_server.py**: MCP server tool registration
+
+**Responsibilities:**
+
+- Define MCP tools using `@mcp.tool` decorator
+- Map tool parameters to model types
+- Call services layer for processing
+- Return responses to MCP clients
+
+```python
+@mcp.tool
+def ultrathink(thought: str, total_thoughts: int, ...) -> ThoughtResponse:
+    request = ThoughtRequest(thought=thought, total_thoughts=total_thoughts, ...)
+    return thinking_service.process_thought(request)
 ```
 
 **Type Safety Benefits:**
@@ -476,32 +445,33 @@ response = service.process_thought(request)
 - Pydantic validation on all inputs/outputs
 - No arbitrary dicts - strict typing throughout
 - Automatic validation errors
-- Clear separation between interface and domain layers
+- Clear separation between interface and business logic
 
-### DDD Benefits
+### Architecture Benefits
 
 1. **Clear Separation of Concerns**:
-   - Interface layer (DTOs) = Input/output validation
-   - Domain layer (Entity, Aggregate) = Pure business logic
-   - Application layer (Service) = DTO translation & orchestration
+   - Models layer = Data models with validation and behaviors
+   - Services layer = Business logic and orchestration
+   - Interface layer = External API (MCP tools)
 
-2. **Domain Logic in Entities**: Business rules live with the data they govern
+2. **Simpler Structure**: Flatter folder hierarchy (2 levels instead of 3)
 
-3. **Testable**: Easy to test entities and aggregates in isolation
+3. **Easier Imports**: Shorter relative import paths (`..models` vs `...domain.entities`)
 
-4. **Maintainable**:
-   - Change interface contract? → Update DTOs & Service only
-   - Change business rules? → Update Domain layer only
+4. **Consolidated Models**: Related models grouped together (Thought, ThoughtRequest, ThoughtResponse in one file)
 
-5. **Extensible**: Easy to add new behaviors to entities
+5. **Testable**: Easy to test each layer in isolation
 
-6. **Interface Independence**: Domain can be reused with different interfaces (REST API, gRPC, CLI, etc.)
+6. **Maintainable**:
+   - Change interface? → Update interface layer only
+   - Change business rules? → Update services layer only
+   - Change validation? → Update models layer only
 
-7. **Defensive Validation**: Both DTO and Entity layers validate independently (defense in depth):
-   - `ThoughtRequest` (DTO) validates at the interface boundary for MCP inputs
-   - `Thought` (Entity) validates for direct instantiation (tests, future use cases)
-   - This ensures entities are self-protecting and don't rely on upstream validation
-   - While fields appear duplicated, each layer serves a distinct purpose
+7. **Extensible**: Easy to add new models, services, or tools
+
+8. **Interface Independence**: Services can be reused with different interfaces (REST API, gRPC, CLI, etc.)
+
+9. **Type Safety**: Pydantic models throughout ensure validation at all boundaries
 
 ## Development
 

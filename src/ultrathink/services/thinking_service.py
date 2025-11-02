@@ -1,15 +1,13 @@
 import os
 import uuid
-from ...domain.entities.thought import Thought
-from ...domain.aggregates.thinking_session import ThinkingSession
-from ...dto.request import ThoughtRequest
-from ...dto.response import ThoughtResponse
+from ..models.thought import Thought, ThoughtRequest, ThoughtResponse
+from ..models.session import ThinkingSession
 
 
 class UltraThinkService:
     """
-    Application Service: Orchestrates the sequential thinking process
-    Handles session lifecycle and translates between interface DTOs and domain entities
+    Service: Orchestrates the sequential thinking process
+    Handles session lifecycle and coordinates between models and interface
     """
 
     def __init__(self) -> None:
@@ -20,13 +18,13 @@ class UltraThinkService:
 
     def process_thought(self, request: ThoughtRequest) -> ThoughtResponse:
         """
-        Process a thought request (Application Service orchestration)
+        Process a thought request
 
         Args:
-            request: ThoughtRequest DTO from interface layer
+            request: ThoughtRequest from interface layer
 
         Returns:
-            ThoughtResponse DTO for interface layer
+            ThoughtResponse for interface layer
 
         Raises:
             ValidationError: If request validation fails
@@ -61,16 +59,16 @@ class UltraThinkService:
         else:
             next_thought_needed = request.next_thought_needed
 
-        # 1. Translate DTO to domain entity (exclude session_id, override auto-assigned fields)
+        # Translate request to thought model (exclude session_id, override auto-assigned fields)
         thought_data = request.model_dump(exclude={"session_id"})
         thought_data["thought_number"] = thought_number
         thought_data["next_thought_needed"] = next_thought_needed
         thought = Thought(**thought_data)
 
-        # 2. Execute domain logic
+        # Execute business logic
         session.add_thought(thought)
 
-        # 3. Translate domain result to response DTO
+        # Return response
         return ThoughtResponse(
             session_id=session_id,
             thought_number=thought.thought_number,

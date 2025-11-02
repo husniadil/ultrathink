@@ -1,4 +1,4 @@
-from .infrastructure.mcp.server import mcp
+from .interface.mcp_server import mcp
 
 
 def main() -> None:

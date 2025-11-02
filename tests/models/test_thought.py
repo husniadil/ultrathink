@@ -1,9 +1,9 @@
 import pytest
-from ultrathink.domain.entities.thought import Thought
+from ultrathink.models.thought import Thought
 
 
 class TestThought:
-    """Test suite for Thought entity"""
+    """Test suite for Thought model"""
 
     def test_thought_is_final_property(self) -> None:
         """Should correctly identify final thoughts via is_final property"""

@@ -1,8 +1,8 @@
 """Tests for MCP server tool function"""
 
 import os
-from ultrathink.infrastructure.mcp.server import ultrathink
-from ultrathink.dto.request import ThoughtRequest
+from ultrathink.interface.mcp_server import ultrathink
+from ultrathink.models.thought import ThoughtRequest
 
 
 class TestUltraThinkTool:

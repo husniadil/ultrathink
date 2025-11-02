@@ -1,14 +1,14 @@
 import sys
 from rich.console import Console
-from ..entities.thought import Thought
+from .thought import Thought
 
 console = Console(file=sys.stderr)
 
 
 class ThinkingSession:
     """
-    Aggregate Root: Manages the sequential thinking session
-    Enforces business rules and maintains consistency (Pure domain - no protocol knowledge)
+    Model: Manages the sequential thinking session
+    Enforces business rules and maintains consistency
     """
 
     def __init__(self, disable_logging: bool = False):
@@ -34,7 +34,7 @@ class ThinkingSession:
         # Auto-adjust total if needed
         thought.auto_adjust_total()
 
-        # Validate references before adding (aggregate root enforces invariants)
+        # Validate references before adding
         existing_numbers = {t.thought_number for t in self._thoughts}
         thought.validate_references(existing_numbers)
 
