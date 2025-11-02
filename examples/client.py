@@ -1,7 +1,7 @@
 import asyncio
 import json
 from fastmcp import Client
-from ultrathink.infrastructure.mcp.server import mcp
+from ultrathink.interface.mcp_server import mcp
 
 
 async def test_ultrathink() -> None:
