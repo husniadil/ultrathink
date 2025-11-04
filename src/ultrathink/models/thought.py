@@ -109,17 +109,14 @@ class Thought(BaseModel):
                     # Empty session - likely forgot to pass session_id
                     raise ValueError(
                         f"Cannot revise thought {self.revises_thought}: no thoughts exist in this session yet. "
-                        f"This usually happens when you're trying to revise a thought in a new session. "
-                        f"Make sure you're passing the correct 'session_id' parameter to continue an existing session. "
-                        f"If this is a new session, you cannot revise thoughts that don't exist yet."
+                        f"To continue an existing session, pass the session_id parameter."
                     )
                 else:
                     # Session has thoughts, but referenced one doesn't exist
                     available = sorted(existing_thought_numbers)
                     raise ValueError(
-                        f"Cannot revise thought {self.revises_thought}: this thought number does not exist in the session history. "
-                        f"Available thought numbers in this session: {available}. "
-                        f"Either reference a valid thought number from the list, or verify you're using the correct session_id."
+                        f"Cannot revise thought {self.revises_thought}: thought not found in this session. "
+                        f"Available thoughts: {available}"
                     )
 
         if self.is_branch and self.branch_from_thought is not None:
@@ -129,17 +126,14 @@ class Thought(BaseModel):
                     # Empty session - likely forgot to pass session_id
                     raise ValueError(
                         f"Cannot branch from thought {self.branch_from_thought}: no thoughts exist in this session yet. "
-                        f"This usually happens when you're trying to branch from a thought in a new session. "
-                        f"Make sure you're passing the correct 'session_id' parameter to continue an existing session. "
-                        f"If this is a new session, you cannot branch from thoughts that don't exist yet."
+                        f"To continue an existing session, pass the session_id parameter."
                     )
                 else:
                     # Session has thoughts, but referenced one doesn't exist
                     available = sorted(existing_thought_numbers)
                     raise ValueError(
-                        f"Cannot branch from thought {self.branch_from_thought}: this thought number does not exist in the session history. "
-                        f"Available thought numbers in this session: {available}. "
-                        f"Either reference a valid thought number from the list, or verify you're using the correct session_id."
+                        f"Cannot branch from thought {self.branch_from_thought}: thought not found in this session. "
+                        f"Available thoughts: {available}"
                     )
 
     def format(self) -> str:

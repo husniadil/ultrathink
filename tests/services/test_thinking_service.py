@@ -566,8 +566,7 @@ class TestUltraThinkService:
         error_msg = str(exc_info.value)
         assert "Cannot revise thought 1" in error_msg
         assert "no thoughts exist in this session yet" in error_msg
-        assert "session_id" in error_msg
-        assert "new session" in error_msg
+        assert "To continue an existing session, pass the session_id parameter" in error_msg
 
     def test_reject_revision_to_nonexistent_thought_in_existing_session(
         self, server: UltraThinkService
@@ -609,10 +608,9 @@ class TestUltraThinkService:
 
         error_msg = str(exc_info.value)
         assert "Cannot revise thought 99" in error_msg
-        assert "does not exist in the session history" in error_msg
-        assert "Available thought numbers" in error_msg
+        assert "thought not found in this session" in error_msg
+        assert "Available thoughts" in error_msg
         assert "[1, 2]" in error_msg
-        assert "session_id" in error_msg
 
     def test_accept_valid_branch_from_existing_thought(
         self, server: UltraThinkService
@@ -664,8 +662,7 @@ class TestUltraThinkService:
         error_msg = str(exc_info.value)
         assert "Cannot branch from thought 1" in error_msg
         assert "no thoughts exist in this session yet" in error_msg
-        assert "session_id" in error_msg
-        assert "new session" in error_msg
+        assert "To continue an existing session, pass the session_id parameter" in error_msg
 
     def test_reject_branch_from_nonexistent_thought_in_existing_session(
         self, server: UltraThinkService
@@ -707,10 +704,9 @@ class TestUltraThinkService:
 
         error_msg = str(exc_info.value)
         assert "Cannot branch from thought 99" in error_msg
-        assert "does not exist in the session history" in error_msg
-        assert "Available thought numbers" in error_msg
+        assert "thought not found in this session" in error_msg
+        assert "Available thoughts" in error_msg
         assert "[1, 2]" in error_msg
-        assert "session_id" in error_msg
 
     def test_accept_first_thought_without_references(
         self, server: UltraThinkService
@@ -746,7 +742,7 @@ class TestUltraThinkService:
         error_msg = str(exc_info.value)
         assert "Cannot revise thought 1" in error_msg
         assert "no thoughts exist in this session yet" in error_msg
-        assert "session_id" in error_msg
+        assert "To continue an existing session, pass the session_id parameter" in error_msg
 
     def test_allow_revision_and_branch_to_same_thought(
         self, server: UltraThinkService
