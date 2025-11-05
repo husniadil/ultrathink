@@ -133,11 +133,11 @@ The server provides a single tool for dynamic and reflective problem-solving thr
 Returns a JSON object with:
 
 - `session_id`: Session identifier for continuation
-- `thoughtNumber`: Current thought number
-- `totalThoughts`: Total thoughts (auto-adjusted if needed)
-- `nextThoughtNeeded`: Whether more thinking is needed
+- `thought_number`: Current thought number
+- `total_thoughts`: Total thoughts (auto-adjusted if needed)
+- `next_thought_needed`: Whether more thinking is needed
 - `branches`: List of branch IDs
-- `thoughtHistoryLength`: Number of thoughts processed in this session
+- `thought_history_length`: Number of thoughts processed in this session
 - `confidence`: Confidence level of this thought (0.0-1.0, optional)
 - `uncertainty_notes`: Explanation for doubts or concerns (optional)
 - `outcome`: What was achieved or expected (optional)
