@@ -2,6 +2,13 @@ from typing import Annotated
 from pydantic import BaseModel, Field, field_validator
 
 
+def _validate_thought_not_empty(value: str) -> str:
+    """Helper function to validate thought is non-empty"""
+    if not value or not value.strip():
+        raise ValueError("thought must be a non-empty string")
+    return value
+
+
 class Thought(BaseModel):
     """
     Model: Represents a single thought in sequential thinking process
@@ -40,9 +47,7 @@ class Thought(BaseModel):
     branch_from_thought: Annotated[
         int | None, Field(None, ge=1, description="Branching point thought number")
     ] = None
-    branch_id: Annotated[str | None, Field(None, description="Branch identifier")] = (
-        None
-    )
+    branch_id: Annotated[str | None, Field(None, description="Branch identifier")] = None
     needs_more_thoughts: Annotated[
         bool | None, Field(None, description="If more thoughts are needed")
     ] = None
@@ -73,9 +78,7 @@ class Thought(BaseModel):
     @field_validator("thought")
     @classmethod
     def validate_thought_not_empty(cls, v: str) -> str:
-        if not v or not v.strip():
-            raise ValueError("thought must be a non-empty string")
-        return v
+        return _validate_thought_not_empty(v)
 
     @property
     def is_branch(self) -> bool:
@@ -266,9 +269,7 @@ class ThoughtRequest(BaseModel):
     branch_from_thought: Annotated[
         int | None, Field(None, ge=1, description="Branching point thought number")
     ] = None
-    branch_id: Annotated[str | None, Field(None, description="Branch identifier")] = (
-        None
-    )
+    branch_id: Annotated[str | None, Field(None, description="Branch identifier")] = None
     needs_more_thoughts: Annotated[
         bool | None, Field(None, description="If more thoughts are needed")
     ] = None
@@ -299,9 +300,7 @@ class ThoughtRequest(BaseModel):
     @field_validator("thought")
     @classmethod
     def validate_thought_not_empty(cls, v: str) -> str:
-        if not v or not v.strip():
-            raise ValueError("thought must be a non-empty string")
-        return v
+        return _validate_thought_not_empty(v)
 
 
 class ThoughtResponse(BaseModel):
@@ -309,6 +308,8 @@ class ThoughtResponse(BaseModel):
     Model: Response model for ultrathink tool
     Represents output sent to MCP clients
     """
+
+    model_config = {"strict": True}
 
     session_id: Annotated[str, Field(description="Session identifier for continuation")]
     thought_number: Annotated[

@@ -2,7 +2,10 @@ import sys
 from rich.console import Console
 from .thought import Thought
 
-console = Console(file=sys.stderr)
+
+def _get_console() -> Console:
+    """Lazy-load console only when needed"""
+    return Console(file=sys.stderr)
 
 
 class ThinkingSession:
@@ -49,4 +52,4 @@ class ThinkingSession:
 
         # Log if enabled
         if not self._disable_logging:
-            console.print(thought.format())
+            _get_console().print(thought.format())
