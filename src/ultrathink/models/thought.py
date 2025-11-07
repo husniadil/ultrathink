@@ -47,7 +47,9 @@ class Thought(BaseModel):
     branch_from_thought: Annotated[
         int | None, Field(None, ge=1, description="Branching point thought number")
     ] = None
-    branch_id: Annotated[str | None, Field(None, description="Branch identifier")] = None
+    branch_id: Annotated[str | None, Field(None, description="Branch identifier")] = (
+        None
+    )
     needs_more_thoughts: Annotated[
         bool | None, Field(None, description="If more thoughts are needed")
     ] = None
@@ -269,7 +271,9 @@ class ThoughtRequest(BaseModel):
     branch_from_thought: Annotated[
         int | None, Field(None, ge=1, description="Branching point thought number")
     ] = None
-    branch_id: Annotated[str | None, Field(None, description="Branch identifier")] = None
+    branch_id: Annotated[str | None, Field(None, description="Branch identifier")] = (
+        None
+    )
     needs_more_thoughts: Annotated[
         bool | None, Field(None, description="If more thoughts are needed")
     ] = None
