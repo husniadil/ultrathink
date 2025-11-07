@@ -170,6 +170,7 @@ This design choice keeps the implementation simple and stateless-friendly, but d
 ## Dependencies
 
 - **fastmcp**: Framework for building MCP servers with minimal boilerplate
+- **rich**: Library for rich text and beautiful formatting in the terminal (colored output, formatted boxes)
 - **mypy**: Type checker configured in strict mode for entire codebase
 - Python 3.12+ required (specified in pyproject.toml)
 

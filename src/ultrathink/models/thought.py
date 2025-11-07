@@ -195,10 +195,10 @@ class Thought(BaseModel):
         # Build final formatted output
         lines = [f"┌{border}┐"]
 
-        # Header
+        # Header (uses -2 padding for metadata lines)
         lines.append(f"│ {header}{' ' * (border_length - len(header) - 2)}│")
 
-        # Uncertainty notes (if present)
+        # Uncertainty notes (if present, uses -2 padding for metadata lines)
         if uncertainty_line:
             lines.append(
                 f"│ {uncertainty_line}{' ' * (border_length - len(uncertainty_line) - 2)}│"
@@ -207,12 +207,12 @@ class Thought(BaseModel):
         # Separator
         lines.append(f"├{border}┤")
 
-        # Main thought
+        # Main thought content (intentionally uses -1 padding for main content, different from -2 for metadata)
         lines.append(
             f"│ {self.thought}{' ' * (border_length - len(self.thought) - 1)}│"
         )
 
-        # Outcome (if present)
+        # Outcome (if present, uses -2 padding for metadata lines)
         if outcome_line:
             lines.append(
                 f"│ {outcome_line}{' ' * (border_length - len(outcome_line) - 2)}│"
