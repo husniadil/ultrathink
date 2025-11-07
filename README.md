@@ -148,7 +148,7 @@ Returns a JSON object with:
 
 ```python
 from fastmcp import Client
-from ultrathink.main import mcp
+from ultrathink import mcp
 
 async with Client(mcp) as client:
     # Simple sequential thinking with auto-assigned fields
@@ -333,7 +333,7 @@ Built with **Simple Layered Architecture** principles for clean separation of co
 
 - **mcp_server.py**: MCP server entry point with FastMCP tool registration
 
-**Root Files**
+**Package Entry Points**
 
 - **\_\_init\_\_.py**: Package exports
 - **\_\_main\_\_.py**: CLI entry point (enables `uv run ultrathink`)

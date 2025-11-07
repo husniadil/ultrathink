@@ -8,10 +8,13 @@ from .services.thinking_service import UltraThinkService
 from .interface.mcp_server import mcp
 
 __all__ = [
+    # Models layer
     "Thought",
-    "ThinkingSession",
-    "UltraThinkService",
     "ThoughtRequest",
     "ThoughtResponse",
+    "ThinkingSession",
+    # Services layer
+    "UltraThinkService",
+    # Interface layer
     "mcp",
 ]
