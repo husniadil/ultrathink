@@ -3,6 +3,7 @@ from pydantic import Field
 from fastmcp import FastMCP
 from ..services.thinking_service import UltraThinkService
 from ..models.thought import ThoughtRequest, ThoughtResponse
+from ..models.assumption import Assumption
 
 mcp = FastMCP("UltraThink")
 
@@ -132,6 +133,34 @@ def ultrathink(
             description="What was achieved or expected as result of this thought",
         ),
     ] = None,
+    assumptions: Annotated[
+        list[Assumption] | None,
+        Field(
+            None,
+            description=(
+                "Assumptions made in this thought. Required fields: "
+                "id (e.g., 'A1'), text (the assumption). "
+                "Optional fields: confidence (0.0-1.0, default 1.0), "
+                "critical (bool, default True), verifiable (bool, default False), "
+                "evidence (str, default None), verification_status ('unverified'|'verified_true'|'verified_false', default None). "
+                "Note: Core fields (text, critical) are immutable after creation - only verification fields can be updated."
+            ),
+        ),
+    ] = None,
+    depends_on_assumptions: Annotated[
+        list[str] | None,
+        Field(
+            None,
+            description="Assumption IDs from previous thoughts that this thought depends on (e.g., ['A1', 'A2'])",
+        ),
+    ] = None,
+    invalidates_assumptions: Annotated[
+        list[str] | None,
+        Field(
+            None,
+            description="Assumption IDs proven false by this thought (e.g., ['A3'])",
+        ),
+    ] = None,
 ) -> ThoughtResponse:
     """
     A detailed tool for dynamic and reflective problem-solving through thoughts.
@@ -174,6 +203,7 @@ def ultrathink(
     - Revision params: is_revision, revises_thought (use together)
     - Branching params: branch_from_thought, branch_id (use together)
     - Confidence tracking: confidence, uncertainty_notes, outcome (optional)
+    - Assumption tracking: assumptions, depends_on_assumptions, invalidates_assumptions (optional)
 
     Example usage:
 
@@ -194,12 +224,20 @@ def ultrathink(
        - Multiple problems: Use different session_ids for separate thinking contexts
        - Resilient recovery: Reuse the same custom session_id across reconnections
     6. Express uncertainty using the confidence parameter (0.0=very uncertain, 1.0=very certain)
-    7. Clearly state what you're analyzing or deciding in each thought
-    8. Ignore information that is irrelevant to the current step
-    9. Generate solution hypotheses as you develop understanding
-    10. Verify hypotheses through subsequent thinking steps
-    11. Repeat the process until you reach a satisfactory solution
-    12. Provide a single, ideally correct answer as the final output
+    7. Track assumptions explicitly using the assumptions parameter:
+       - State what you're taking for granted with assumption objects
+       - Mark critical assumptions (if false, reasoning collapses)
+       - Express confidence in each assumption (separate from thought confidence)
+       - Mark assumptions as verifiable if they can be checked
+    8. Build on previous assumptions using depends_on_assumptions to show reasoning dependencies
+    9. Invalidate false assumptions using invalidates_assumptions when discovering errors
+    10. Monitor risky_assumptions in response (critical + low confidence + unverified)
+    11. Clearly state what you're analyzing or deciding in each thought
+    12. Ignore information that is irrelevant to the current step
+    13. Generate solution hypotheses as you develop understanding
+    14. Verify hypotheses through subsequent thinking steps
+    15. Repeat the process until you reach a satisfactory solution
+    16. Provide a single, ideally correct answer as the final output
     """
     # Construct ThoughtRequest from flat parameters
     request = ThoughtRequest(
@@ -216,5 +254,8 @@ def ultrathink(
         confidence=confidence,
         uncertainty_notes=uncertainty_notes,
         outcome=outcome,
+        assumptions=assumptions,
+        depends_on_assumptions=depends_on_assumptions,
+        invalidates_assumptions=invalidates_assumptions,
     )
     return thinking_service.process_thought(request)

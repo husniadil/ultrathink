@@ -3,6 +3,7 @@ from typing import Generator
 import pytest
 from ultrathink.services.thinking_service import UltraThinkService
 from ultrathink.models.thought import ThoughtRequest, ThoughtResponse
+from ultrathink.models.assumption import Assumption
 
 
 class TestLogging:
@@ -141,3 +142,479 @@ class TestLogging:
         assert response.confidence == 0.85
         assert response.uncertainty_notes == "Need more testing"
         assert response.outcome == "Partial success"
+
+
+class TestAssumptionTracking:
+    """Test suite for assumption tracking functionality"""
+
+    @pytest.fixture
+    def service(self) -> UltraThinkService:
+        """Create a service instance"""
+        return UltraThinkService()
+
+    def test_add_assumption_to_thought(self, service: UltraThinkService) -> None:
+        """Should track assumptions added to thoughts"""
+        assumption = Assumption(
+            id="A1", text="Dataset fits in memory", confidence=0.8, critical=True
+        )
+
+        request = ThoughtRequest(
+            thought="We can use in-memory processing",
+            total_thoughts=3,
+            assumptions=[assumption],
+        )
+
+        response = service.process_thought(request)
+        assert "A1" in response.all_assumptions
+        assert response.all_assumptions["A1"].text == "Dataset fits in memory"
+        assert response.all_assumptions["A1"].confidence == 0.8
+
+    def test_multiple_assumptions_in_thought(self, service: UltraThinkService) -> None:
+        """Should track multiple assumptions from single thought"""
+        assumptions = [
+            Assumption(id="A1", text="Dataset fits in memory", confidence=0.8),
+            Assumption(id="A2", text="Low latency network", confidence=0.9),
+        ]
+
+        request = ThoughtRequest(
+            thought="We can use distributed caching",
+            total_thoughts=3,
+            assumptions=assumptions,
+        )
+
+        response = service.process_thought(request)
+        assert len(response.all_assumptions) == 2
+        assert "A1" in response.all_assumptions
+        assert "A2" in response.all_assumptions
+
+    def test_assumptions_persist_across_thoughts(
+        self, service: UltraThinkService
+    ) -> None:
+        """Should persist assumptions across multiple thoughts in same session"""
+        session_id = "test-session"
+
+        # First thought with assumption
+        request1 = ThoughtRequest(
+            thought="Initial thought",
+            total_thoughts=3,
+            session_id=session_id,
+            assumptions=[Assumption(id="A1", text="Test assumption", confidence=0.7)],
+        )
+        response1 = service.process_thought(request1)
+        assert "A1" in response1.all_assumptions
+
+        # Second thought without new assumptions
+        request2 = ThoughtRequest(
+            thought="Second thought",
+            total_thoughts=3,
+            session_id=session_id,
+        )
+        response2 = service.process_thought(request2)
+        assert "A1" in response2.all_assumptions  # Should still be there
+
+    def test_depends_on_assumptions(self, service: UltraThinkService) -> None:
+        """Should track assumption dependencies"""
+        session_id = "test-session"
+
+        # First thought with assumptions
+        request1 = ThoughtRequest(
+            thought="Initial thought",
+            total_thoughts=3,
+            session_id=session_id,
+            assumptions=[Assumption(id="A1", text="Test assumption")],
+        )
+        service.process_thought(request1)
+
+        # Second thought depending on A1
+        request2 = ThoughtRequest(
+            thought="Building on A1",
+            total_thoughts=3,
+            session_id=session_id,
+            depends_on_assumptions=["A1"],
+        )
+        response2 = service.process_thought(request2)
+        assert "A1" in response2.all_assumptions
+
+    def test_depends_on_nonexistent_assumption_error(
+        self, service: UltraThinkService
+    ) -> None:
+        """Should raise error when depending on non-existent assumption"""
+        request = ThoughtRequest(
+            thought="Test thought",
+            total_thoughts=3,
+            depends_on_assumptions=["A99"],  # Doesn't exist
+        )
+
+        with pytest.raises(ValueError) as exc_info:
+            service.process_thought(request)
+        assert "Cannot depend on assumption A99" in str(exc_info.value)
+        assert "assumption not found" in str(exc_info.value)
+
+    def test_invalidate_nonexistent_assumption_error(
+        self, service: UltraThinkService
+    ) -> None:
+        """Should raise error when invalidating non-existent assumption"""
+        request = ThoughtRequest(
+            thought="Test thought",
+            total_thoughts=3,
+            invalidates_assumptions=["A99"],  # Doesn't exist
+        )
+
+        with pytest.raises(ValueError) as exc_info:
+            service.process_thought(request)
+        assert "Cannot invalidate assumption A99" in str(exc_info.value)
+        assert "assumption not found" in str(exc_info.value)
+
+    def test_invalidate_assumption(self, service: UltraThinkService) -> None:
+        """Should mark assumptions as falsified when invalidated"""
+        session_id = "test-session"
+
+        # First thought with assumption
+        request1 = ThoughtRequest(
+            thought="Assuming dataset is small",
+            total_thoughts=3,
+            session_id=session_id,
+            assumptions=[Assumption(id="A1", text="Dataset < 1GB", confidence=0.6)],
+        )
+        response1 = service.process_thought(request1)
+        assert response1.all_assumptions["A1"].verification_status is None
+
+        # Second thought invalidates the assumption
+        request2 = ThoughtRequest(
+            thought="Actually, dataset is 10GB",
+            total_thoughts=3,
+            session_id=session_id,
+            invalidates_assumptions=["A1"],
+        )
+        response2 = service.process_thought(request2)
+        assert response2.all_assumptions["A1"].verification_status == "verified_false"
+        assert "A1" in response2.falsified_assumptions
+
+    def test_risky_assumptions_detection(self, service: UltraThinkService) -> None:
+        """Should detect risky assumptions (critical + low confidence + unverified)"""
+        risky = Assumption(
+            id="A1",
+            text="API will respond in <100ms",
+            confidence=0.5,  # Low confidence
+            critical=True,  # Critical
+            verification_status=None,  # Unverified
+        )
+
+        request = ThoughtRequest(
+            thought="Building low-latency system",
+            total_thoughts=3,
+            assumptions=[risky],
+        )
+
+        response = service.process_thought(request)
+        assert "A1" in response.risky_assumptions
+
+    def test_non_risky_assumptions(self, service: UltraThinkService) -> None:
+        """Should not flag non-risky assumptions"""
+        # High confidence
+        assumption1 = Assumption(
+            id="A1",
+            text="Test",
+            confidence=0.9,
+            critical=True,
+            verification_status=None,
+        )
+
+        # Not critical
+        assumption2 = Assumption(
+            id="A2",
+            text="Test",
+            confidence=0.5,
+            critical=False,
+            verification_status=None,
+        )
+
+        # Verified
+        assumption3 = Assumption(
+            id="A3",
+            text="Test",
+            confidence=0.5,
+            critical=True,
+            verification_status="verified_true",
+        )
+
+        request = ThoughtRequest(
+            thought="Test",
+            total_thoughts=3,
+            assumptions=[assumption1, assumption2, assumption3],
+        )
+
+        response = service.process_thought(request)
+        assert len(response.risky_assumptions) == 0
+
+    def test_update_existing_assumption(self, service: UltraThinkService) -> None:
+        """Should update verification fields when core fields match"""
+        session_id = "test-session"
+
+        # First thought with assumption
+        request1 = ThoughtRequest(
+            thought="Initial thought",
+            total_thoughts=3,
+            session_id=session_id,
+            assumptions=[Assumption(id="A1", text="Original text", confidence=0.5)],
+        )
+        response1 = service.process_thought(request1)
+        assert response1.all_assumptions["A1"].text == "Original text"
+        assert response1.all_assumptions["A1"].confidence == 0.5
+
+        # Second thought updates verification fields (keeping same text)
+        request2 = ThoughtRequest(
+            thought="Updated thought",
+            total_thoughts=3,
+            session_id=session_id,
+            assumptions=[
+                Assumption(
+                    id="A1",
+                    text="Original text",  # Same text - core field is immutable
+                    confidence=0.9,  # Updated confidence - allowed
+                    verification_status="verified_true",  # Updated status - allowed
+                )
+            ],
+        )
+        response2 = service.process_thought(request2)
+        assert response2.all_assumptions["A1"].text == "Original text"  # Unchanged
+        assert response2.all_assumptions["A1"].confidence == 0.9  # Updated
+        assert response2.all_assumptions["A1"].verification_status == "verified_true"
+
+    def test_verify_assumption(self, service: UltraThinkService) -> None:
+        """Should mark assumption as verified when explicitly set"""
+        request = ThoughtRequest(
+            thought="Verified assumption",
+            total_thoughts=3,
+            assumptions=[
+                Assumption(
+                    id="A1",
+                    text="Dataset fits in memory",
+                    verification_status="verified_true",
+                )
+            ],
+        )
+
+        response = service.process_thought(request)
+        assert response.all_assumptions["A1"].verification_status == "verified_true"
+        assert "A1" not in response.falsified_assumptions
+
+    def test_get_affected_thoughts(self, service: UltraThinkService) -> None:
+        """Should find all thoughts that depend on a given assumption"""
+        session_id = "test-session"
+
+        # T1: Add assumption A1
+        request1 = ThoughtRequest(
+            thought="Adding assumption A1",
+            total_thoughts=5,
+            session_id=session_id,
+            assumptions=[Assumption(id="A1", text="Dataset < 1GB")],
+        )
+        service.process_thought(request1)
+
+        # T2: Depends on A1
+        request2 = ThoughtRequest(
+            thought="Using A1",
+            total_thoughts=5,
+            session_id=session_id,
+            depends_on_assumptions=["A1"],
+        )
+        service.process_thought(request2)
+
+        # T3: No dependencies
+        request3 = ThoughtRequest(
+            thought="Independent thought",
+            total_thoughts=5,
+            session_id=session_id,
+        )
+        service.process_thought(request3)
+
+        # T4: Also depends on A1
+        request4 = ThoughtRequest(
+            thought="Also using A1",
+            total_thoughts=5,
+            session_id=session_id,
+            depends_on_assumptions=["A1"],
+        )
+        service.process_thought(request4)
+
+        # Get session and check affected thoughts
+        session = service._sessions[session_id]
+        affected = session.get_affected_thoughts("A1")
+        assert affected == [2, 4]
+
+        # Non-existent assumption returns empty list
+        affected_none = session.get_affected_thoughts("A99")
+        assert affected_none == []
+
+    def test_multiple_sessions_isolated_assumptions(
+        self, service: UltraThinkService
+    ) -> None:
+        """Should keep assumptions isolated between different sessions"""
+        # Session 1
+        request1 = ThoughtRequest(
+            thought="Session 1 thought",
+            total_thoughts=3,
+            session_id="session-1",
+            assumptions=[Assumption(id="A1", text="Session 1 assumption")],
+        )
+        response1 = service.process_thought(request1)
+        assert "A1" in response1.all_assumptions
+
+        # Session 2
+        request2 = ThoughtRequest(
+            thought="Session 2 thought",
+            total_thoughts=3,
+            session_id="session-2",
+            assumptions=[Assumption(id="A2", text="Session 2 assumption")],
+        )
+        response2 = service.process_thought(request2)
+        assert "A2" in response2.all_assumptions
+        assert "A1" not in response2.all_assumptions  # Should not have A1
+
+    def test_assumption_logging(self, service: UltraThinkService) -> None:
+        """Should log thoughts with assumptions properly"""
+        assumption = Assumption(
+            id="A1",
+            text="Test assumption",
+            confidence=0.8,
+            critical=True,
+            evidence="Based on testing",
+        )
+
+        request = ThoughtRequest(
+            thought="Thought with assumption",
+            total_thoughts=3,
+            assumptions=[assumption],
+        )
+
+        # Should not raise any errors
+        response = service.process_thought(request)
+        assert isinstance(response, ThoughtResponse)
+
+    def test_update_assumption_verification_fields(
+        self, service: UltraThinkService
+    ) -> None:
+        """Should allow updating verification-related fields when core fields match"""
+        session_id = "test-session"
+
+        # First thought creates assumption
+        request1 = ThoughtRequest(
+            thought="Initial assumption",
+            total_thoughts=3,
+            session_id=session_id,
+            assumptions=[
+                Assumption(
+                    id="A1",
+                    text="Cache hit rate > 70%",
+                    confidence=0.6,
+                    critical=True,
+                    verifiable=True,
+                )
+            ],
+        )
+        response1 = service.process_thought(request1)
+        assert response1.all_assumptions["A1"].confidence == 0.6
+        assert response1.all_assumptions["A1"].verification_status is None
+
+        # Second thought updates verification fields (same text and critical)
+        request2 = ThoughtRequest(
+            thought="After testing, verified the assumption",
+            total_thoughts=3,
+            session_id=session_id,
+            assumptions=[
+                Assumption(
+                    id="A1",
+                    text="Cache hit rate > 70%",  # Same text
+                    confidence=0.95,  # Updated confidence
+                    critical=True,  # Same critical
+                    verifiable=True,
+                    evidence="Verified in production",  # New evidence
+                    verification_status="verified_true",  # Updated status
+                )
+            ],
+        )
+        response2 = service.process_thought(request2)
+        # Should update successfully
+        assert response2.all_assumptions["A1"].confidence == 0.95
+        assert response2.all_assumptions["A1"].verification_status == "verified_true"
+        assert response2.all_assumptions["A1"].evidence == "Verified in production"
+
+    def test_update_assumption_text_mismatch_error(
+        self, service: UltraThinkService
+    ) -> None:
+        """Should raise error when updating assumption with different text"""
+        session_id = "test-session"
+
+        # First thought creates assumption
+        request1 = ThoughtRequest(
+            thought="Initial assumption",
+            total_thoughts=3,
+            session_id=session_id,
+            assumptions=[
+                Assumption(id="A1", text="Cache hit rate > 70%", confidence=0.6)
+            ],
+        )
+        service.process_thought(request1)
+
+        # Second thought tries to update with different text
+        request2 = ThoughtRequest(
+            thought="Trying to change assumption text",
+            total_thoughts=3,
+            session_id=session_id,
+            assumptions=[
+                Assumption(
+                    id="A1",
+                    text="Database has indexes",  # Different text!
+                    confidence=0.8,
+                )
+            ],
+        )
+
+        with pytest.raises(ValueError) as exc_info:
+            service.process_thought(request2)
+        assert "Cannot update assumption A1" in str(exc_info.value)
+        assert "text mismatch" in str(exc_info.value)
+        assert "Cache hit rate > 70%" in str(exc_info.value)
+        assert "Database has indexes" in str(exc_info.value)
+        assert "immutable" in str(exc_info.value)
+
+    def test_update_assumption_critical_mismatch_error(
+        self, service: UltraThinkService
+    ) -> None:
+        """Should raise error when updating assumption with different critical flag"""
+        session_id = "test-session"
+
+        # First thought creates assumption
+        request1 = ThoughtRequest(
+            thought="Initial assumption",
+            total_thoughts=3,
+            session_id=session_id,
+            assumptions=[
+                Assumption(
+                    id="A1", text="Cache hit rate > 70%", confidence=0.6, critical=True
+                )
+            ],
+        )
+        service.process_thought(request1)
+
+        # Second thought tries to update with different critical flag
+        request2 = ThoughtRequest(
+            thought="Trying to change critical flag",
+            total_thoughts=3,
+            session_id=session_id,
+            assumptions=[
+                Assumption(
+                    id="A1",
+                    text="Cache hit rate > 70%",  # Same text
+                    confidence=0.8,
+                    critical=False,  # Different critical!
+                )
+            ],
+        )
+
+        with pytest.raises(ValueError) as exc_info:
+            service.process_thought(request2)
+        assert "Cannot update assumption A1" in str(exc_info.value)
+        assert "critical flag mismatch" in str(exc_info.value)
+        assert "immutable" in str(exc_info.value)

@@ -167,6 +167,89 @@ from ..models.session import ThinkingSession
 
 This design choice keeps the implementation simple and stateless-friendly, but developers should be aware that session continuity across restarts requires additional implementation.
 
+### Assumption Tracking
+
+**New in v2.0**: The ultrathink tool now supports explicit assumption tracking to make reasoning more transparent and adaptive.
+
+#### Key Features
+
+- **Explicit assumptions**: State what you're taking for granted with `Assumption` objects
+- **Confidence tracking**: Express confidence in each assumption (0.0-1.0)
+- **Criticality marking**: Flag assumptions as critical (if false, reasoning collapses)
+- **Dependency tracking**: Link thoughts to the assumptions they depend on
+- **Assumption invalidation**: Mark assumptions as false when discovered
+- **Risk detection**: Automatically identify risky assumptions (critical + low confidence + unverified)
+
+#### Migration Guide: Before vs After
+
+**Before (Implicit assumptions):**
+
+```python
+# Thought 1
+"Redis will work because it's fast enough for our use case"
+
+# Thought 2
+"Based on Redis performance, we can handle 10K requests/sec"
+```
+
+**After (Explicit assumption tracking):**
+
+```python
+# Thought 1: State assumptions explicitly
+thought = "Redis should meet our performance requirements"
+assumptions = [
+    Assumption(
+        id="A1",
+        text="Network latency to Redis < 5ms",
+        confidence=0.8,
+        critical=True,
+        verifiable=True
+    ),
+    Assumption(
+        id="A2",
+        text="Cache hit rate will be > 70%",
+        confidence=0.6,
+        critical=True,
+        verifiable=True
+    )
+]
+
+# Thought 2: Build on previous assumptions
+thought = "Based on low latency (A1) and high hit rate (A2), Redis can handle 10K req/sec"
+depends_on_assumptions = ["A1", "A2"]
+
+# Thought 3: Invalidate if proven false
+thought = "After testing, cache hit rate is only 45%, not 70%!"
+invalidates_assumptions = ["A2"]  # Marks A2 as verified_false
+
+# Thought 4: Revise reasoning
+thought = "Need to implement cache warming to improve hit rate"
+is_revision = True
+revises_thought = 2
+assumptions = [
+    Assumption(
+        id="A3",
+        text="Cache warming can increase hit rate to > 70%",
+        confidence=0.7,
+        critical=True,
+        evidence="Based on similar systems in production"
+    )
+]
+```
+
+#### Benefits
+
+1. **Makes reasoning auditable**: See exactly what was assumed at each step
+2. **Enables adaptive reasoning**: When assumptions prove false, reasoning can adapt
+3. **Supports hypothesis testing**: Explicitly state and verify assumptions
+4. **Improves transparency**: Clear what's certain vs uncertain in reasoning
+
+#### Assumption ID Format
+
+- Must follow pattern: `^A\d+$` (e.g., "A1", "A2", "A10")
+- Case-sensitive: "a1" is invalid, must be "A1"
+- Sequential numbering recommended but not enforced
+
 ## Dependencies
 
 - **fastmcp**: Framework for building MCP servers with minimal boilerplate

@@ -79,4 +79,7 @@ class UltraThinkService:
             confidence=thought.confidence,
             uncertainty_notes=thought.uncertainty_notes,
             outcome=thought.outcome,
+            all_assumptions=session.all_assumptions,
+            risky_assumptions=session.risky_assumptions,
+            falsified_assumptions=session.falsified_assumptions,
         )

@@ -1,5 +1,6 @@
 from typing import Annotated
 from pydantic import BaseModel, Field, field_validator
+from .assumption import Assumption
 
 
 def _validate_thought_not_empty(value: str) -> str:
@@ -74,6 +75,27 @@ class Thought(BaseModel):
         Field(
             None,
             description="What was achieved or expected as result of this thought",
+        ),
+    ] = None
+    assumptions: Annotated[
+        list[Assumption] | None,
+        Field(
+            None,
+            description="Assumptions made in this thought",
+        ),
+    ] = None
+    depends_on_assumptions: Annotated[
+        list[str] | None,
+        Field(
+            None,
+            description="Assumption IDs from previous thoughts that this thought depends on",
+        ),
+    ] = None
+    invalidates_assumptions: Annotated[
+        list[str] | None,
+        Field(
+            None,
+            description="Assumption IDs proven false by this thought",
         ),
     ] = None
 
@@ -187,6 +209,23 @@ class Thought(BaseModel):
             outcome_line = f"✓ Outcome: {self.outcome}"
             content_lines.append(outcome_line)
 
+        # Assumptions (if present)
+        assumption_lines = []
+        if self.assumptions:
+            for assumption in self.assumptions:
+                assumption_lines.append(f"    {assumption.format()}")
+                content_lines.extend(assumption_lines)
+
+        # Dependencies (if present)
+        if self.depends_on_assumptions:
+            dep_line = f"📎 Depends on: {', '.join(self.depends_on_assumptions)}"
+            content_lines.append(dep_line)
+
+        # Invalidations (if present)
+        if self.invalidates_assumptions:
+            inv_line = f"❌ Invalidates: {', '.join(self.invalidates_assumptions)}"
+            content_lines.append(inv_line)
+
         # Calculate border length from longest line
         all_lines = [header] + content_lines
         border_length = max(len(line) for line in all_lines) + 4
@@ -217,6 +256,27 @@ class Thought(BaseModel):
             lines.append(
                 f"│ {outcome_line}{' ' * (border_length - len(outcome_line) - 2)}│"
             )
+
+        # Assumptions (if present)
+        if assumption_lines:
+            lines.append(f"├{border}┤")
+            lines.append(
+                f"│ 📋 Assumptions:{' ' * (border_length - len('📋 Assumptions:') - 2)}│"
+            )
+            for assumption_line in assumption_lines:
+                lines.append(
+                    f"│ {assumption_line}{' ' * (border_length - len(assumption_line) - 2)}│"
+                )
+
+        # Dependencies (if present, uses -2 padding for metadata lines)
+        if self.depends_on_assumptions:
+            dep_line = f"📎 Depends on: {', '.join(self.depends_on_assumptions)}"
+            lines.append(f"│ {dep_line}{' ' * (border_length - len(dep_line) - 2)}│")
+
+        # Invalidations (if present, uses -2 padding for metadata lines)
+        if self.invalidates_assumptions:
+            inv_line = f"❌ Invalidates: {', '.join(self.invalidates_assumptions)}"
+            lines.append(f"│ {inv_line}{' ' * (border_length - len(inv_line) - 2)}│")
 
         # Bottom border
         lines.append(f"└{border}┘")
@@ -300,6 +360,27 @@ class ThoughtRequest(BaseModel):
             description="What was achieved or expected as result of this thought",
         ),
     ] = None
+    assumptions: Annotated[
+        list[Assumption] | None,
+        Field(
+            None,
+            description="Assumptions made in this thought",
+        ),
+    ] = None
+    depends_on_assumptions: Annotated[
+        list[str] | None,
+        Field(
+            None,
+            description="Assumption IDs from previous thoughts that this thought depends on",
+        ),
+    ] = None
+    invalidates_assumptions: Annotated[
+        list[str] | None,
+        Field(
+            None,
+            description="Assumption IDs proven false by this thought",
+        ),
+    ] = None
 
     @field_validator("thought")
     @classmethod
@@ -354,3 +435,21 @@ class ThoughtResponse(BaseModel):
             description="What was achieved or expected as result of this thought",
         ),
     ] = None
+    all_assumptions: Annotated[
+        dict[str, Assumption],
+        Field(
+            description="All assumptions tracked in this session (keyed by assumption ID)",
+        ),
+    ] = {}
+    risky_assumptions: Annotated[
+        list[str],
+        Field(
+            description="IDs of assumptions that are risky (critical, low confidence, unverified)",
+        ),
+    ] = []
+    falsified_assumptions: Annotated[
+        list[str],
+        Field(
+            description="IDs of assumptions proven false",
+        ),
+    ] = []
