@@ -1,6 +1,7 @@
 import sys
 from rich.console import Console
 from .thought import Thought
+from .assumption import Assumption
 
 
 def _get_console() -> Console:
@@ -17,6 +18,7 @@ class ThinkingSession:
     def __init__(self, disable_logging: bool = False):
         self._thoughts: list[Thought] = []
         self._branches: dict[str, list[Thought]] = {}
+        self._assumptions: dict[str, Assumption] = {}
         self._disable_logging = disable_logging
 
     @property
@@ -29,6 +31,59 @@ class ThinkingSession:
         """Get list of all branch IDs"""
         return list(self._branches.keys())
 
+    @property
+    def all_assumptions(self) -> dict[str, Assumption]:
+        """Get all assumptions in this session"""
+        return self._assumptions.copy()
+
+    @property
+    def risky_assumptions(self) -> list[str]:
+        """Get IDs of risky assumptions (critical, low confidence, unverified)"""
+        return [aid for aid, a in self._assumptions.items() if a.is_risky]
+
+    @property
+    def falsified_assumptions(self) -> list[str]:
+        """Get IDs of assumptions proven false"""
+        return [aid for aid, a in self._assumptions.items() if a.is_falsified]
+
+    def verify_assumption(self, assumption_id: str, is_true: bool) -> Assumption | None:
+        """
+        Mark an assumption as verified (true or false)
+
+        Args:
+            assumption_id: ID of assumption to verify
+            is_true: Whether the assumption is verified as true or false
+
+        Returns:
+            Updated assumption if found, None if not found
+        """
+        if assumption_id in self._assumptions:
+            assumption = self._assumptions[assumption_id]
+            assumption.verification_status = (
+                "verified_true" if is_true else "verified_false"
+            )
+            return assumption
+        return None
+
+    def get_affected_thoughts(self, assumption_id: str) -> list[int]:
+        """
+        Find all thought numbers that depend on a given assumption
+
+        Args:
+            assumption_id: ID of assumption to check
+
+        Returns:
+            List of thought numbers that depend on this assumption
+        """
+        affected = []
+        for thought in self._thoughts:
+            if (
+                thought.depends_on_assumptions
+                and assumption_id in thought.depends_on_assumptions
+            ):
+                affected.append(thought.thought_number)
+        return affected
+
     def add_thought(self, thought: Thought) -> None:
         """
         Add a thought to the session
@@ -40,6 +95,34 @@ class ThinkingSession:
         # Validate references before adding
         existing_numbers = {t.thought_number for t in self._thoughts}
         thought.validate_references(existing_numbers)
+
+        # Validate assumption dependencies
+        if thought.depends_on_assumptions:
+            for assumption_id in thought.depends_on_assumptions:
+                if assumption_id not in self._assumptions:
+                    available = sorted(self._assumptions.keys())
+                    raise ValueError(
+                        f"Cannot depend on assumption {assumption_id}: assumption not found in this session. "
+                        f"Available assumptions: {available if available else 'none'}"
+                    )
+
+        # Add new assumptions from this thought
+        if thought.assumptions:
+            for assumption in thought.assumptions:
+                if assumption.id in self._assumptions:
+                    # Update existing assumption
+                    self._assumptions[assumption.id] = assumption
+                else:
+                    # Add new assumption
+                    self._assumptions[assumption.id] = assumption
+
+        # Handle assumption invalidations
+        if thought.invalidates_assumptions:
+            for assumption_id in thought.invalidates_assumptions:
+                if assumption_id in self._assumptions:
+                    self._assumptions[
+                        assumption_id
+                    ].verification_status = "verified_false"
 
         # Add to history
         self._thoughts.append(thought)

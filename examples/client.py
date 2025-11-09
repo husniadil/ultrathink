@@ -307,6 +307,123 @@ async def test_ultrathink() -> None:
         print("  ✓ Sessions maintained separate histories")
         print()
 
+        # Test assumption tracking
+        print("📋 Testing assumption tracking...")
+        print("Problem: Design a caching system\n")
+
+        # Thought 1 with assumptions
+        result_a1 = await client.call_tool(
+            "ultrathink",
+            {
+                "thought": "We should use Redis for caching to achieve low latency",
+                "total_thoughts": 5,
+                "assumptions": [
+                    {
+                        "id": "A1",
+                        "text": "Cache hit rate will be > 70%",
+                        "confidence": 0.6,
+                        "critical": True,
+                        "verifiable": True,
+                    },
+                    {
+                        "id": "A2",
+                        "text": "Network latency to Redis < 5ms",
+                        "confidence": 0.8,
+                        "critical": True,
+                    },
+                ],
+            },
+        )
+        a1 = json.loads(result_a1.content[0].text)
+        a_session_id = a1["session_id"]
+        print("  Thought 1: Added assumptions A1, A2")
+        print(f"  Risky assumptions: {a1.get('risky_assumptions', [])}")
+        print()
+
+        # Thought 2 depending on assumptions
+        result_a2 = await client.call_tool(
+            "ultrathink",
+            {
+                "thought": "Based on high cache hit rate (A1) and low latency (A2), Redis will meet our performance requirements",
+                "total_thoughts": 5,
+                "depends_on_assumptions": ["A1", "A2"],
+                "session_id": a_session_id,
+            },
+        )
+        json.loads(result_a2.content[0].text)
+        print("  Thought 2: Depends on A1, A2")
+        print()
+
+        # Thought 3 - invalidate assumption after verification
+        result_a3 = await client.call_tool(
+            "ultrathink",
+            {
+                "thought": "After checking production data, cache hit rate is only 45%, not 70%. A1 is false!",
+                "total_thoughts": 5,
+                "invalidates_assumptions": ["A1"],
+                "session_id": a_session_id,
+            },
+        )
+        a3 = json.loads(result_a3.content[0].text)
+        print("  Thought 3: Invalidated A1")
+        print(f"  Falsified assumptions: {a3.get('falsified_assumptions', [])}")
+        print()
+
+        # Thought 4 - revise with new assumption
+        result_a4 = await client.call_tool(
+            "ultrathink",
+            {
+                "thought": "Need to revise strategy: implement cache warming to improve hit rate",
+                "total_thoughts": 5,
+                "is_revision": True,
+                "revises_thought": 2,
+                "assumptions": [
+                    {
+                        "id": "A3",
+                        "text": "Cache warming can increase hit rate to > 70%",
+                        "confidence": 0.7,
+                        "critical": True,
+                        "verifiable": True,
+                        "evidence": "Based on similar systems in production",
+                    }
+                ],
+                "session_id": a_session_id,
+            },
+        )
+        a4 = json.loads(result_a4.content[0].text)
+        print("  Thought 4 (revision): Added new assumption A3")
+        print(f"  Total assumptions in session: {len(a4.get('all_assumptions', {}))}")
+        print()
+
+        # Thought 5 - final with verified assumption
+        result_a5 = await client.call_tool(
+            "ultrathink",
+            {
+                "thought": "After implementing cache warming, verified hit rate is 75%. System will work!",
+                "total_thoughts": 5,
+                "assumptions": [
+                    {
+                        "id": "A3",
+                        "text": "Cache warming can increase hit rate to > 70%",
+                        "confidence": 0.95,
+                        "critical": True,
+                        "verification_status": "verified_true",
+                    }
+                ],
+                "depends_on_assumptions": ["A2", "A3"],
+                "session_id": a_session_id,
+            },
+        )
+        a5 = json.loads(result_a5.content[0].text)
+        print("  Thought 5 (final): Verified A3 as true")
+        print(f"  Risky assumptions: {a5.get('risky_assumptions', [])}")
+        print(f"  Falsified assumptions: {a5.get('falsified_assumptions', [])}")
+        print()
+
+        print("  ✓ Assumption tracking demonstrated")
+        print("  ✓ Dependencies and invalidations working")
+        print()
+
         print("✅ All tests passed!")
 
 
