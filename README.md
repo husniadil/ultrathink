@@ -127,6 +127,9 @@ The server provides a single tool for dynamic and reflective problem-solving thr
 - `confidence` (float): Confidence level (0.0-1.0, e.g., 0.7 for 70% confident)
 - `uncertainty_notes` (str): Optional explanation for doubts or concerns about this thought
 - `outcome` (str): What was achieved or expected as result of this thought
+- `assumptions` (list[Assumption]): Assumptions made in this thought (id, text, confidence, critical, verifiable)
+- `depends_on_assumptions` (list[str]): Assumption IDs this thought depends on (e.g., ["A1", "A2"])
+- `invalidates_assumptions` (list[str]): Assumption IDs proven false (e.g., ["A3"])
 
 ### Response
 
@@ -141,6 +144,9 @@ Returns a JSON object with:
 - `confidence`: Confidence level of this thought (0.0-1.0, optional)
 - `uncertainty_notes`: Explanation for doubts or concerns (optional)
 - `outcome`: What was achieved or expected (optional)
+- `all_assumptions`: All assumptions tracked in this session (keyed by ID)
+- `risky_assumptions`: IDs of risky assumptions (critical + low confidence + unverified)
+- `falsified_assumptions`: IDs of assumptions proven false
 
 ### Example
 
@@ -211,6 +217,46 @@ async with Client(mcp) as client:
     print(result["confidence"])          # 0.8
     print(result["uncertainty_notes"])   # "Haven't tested under high load yet"
     print(result["outcome"])             # "Login flow works for standard users"
+```
+
+#### With Assumption Tracking
+
+```python
+async with Client(mcp) as client:
+    # Thought 1: State assumptions explicitly
+    result = await client.call_tool("ultrathink", {
+        "thought": "Redis should meet our performance requirements",
+        "total_thoughts": 4,
+        "assumptions": [
+            {
+                "id": "A1",
+                "text": "Network latency to Redis < 5ms",
+                "confidence": 0.8,
+                "critical": True,
+                "verifiable": True
+            }
+        ]
+    })
+
+    # Thought 2: Build on previous assumptions
+    result2 = await client.call_tool("ultrathink", {
+        "thought": "Based on low latency, Redis can handle 10K req/sec",
+        "total_thoughts": 4,
+        "depends_on_assumptions": ["A1"],
+        "session_id": result["session_id"]
+    })
+
+    # Thought 3: Invalidate if proven false
+    result3 = await client.call_tool("ultrathink", {
+        "thought": "After testing, latency is 15ms, not 5ms!",
+        "total_thoughts": 4,
+        "invalidates_assumptions": ["A1"],
+        "session_id": result["session_id"]
+    })
+
+    # Track all assumptions and detect risky ones
+    print(result3["all_assumptions"])      # {"A1": {...}}
+    print(result3["falsified_assumptions"]) # ["A1"]
 ```
 
 ## Configuration
@@ -530,6 +576,7 @@ While maintaining full compatibility with the original design, UltraThink adds s
 1. **Confidence Scoring** - Explicit uncertainty tracking with 0.0-1.0 scale for each thought
 2. **Auto-assigned Thought Numbers** - Optional thought numbering (auto-increments if omitted)
 3. **Multi-Session Support** - Manage multiple concurrent thinking sessions with session IDs
+4. **Assumption Tracking** - Make reasoning transparent with explicit assumptions, dependencies, and invalidation tracking
 
 ## License
 
