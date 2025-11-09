@@ -348,7 +348,7 @@ class TestAssumptionTracking:
         assert len(response.risky_assumptions) == 0
 
     def test_update_existing_assumption(self, service: UltraThinkService) -> None:
-        """Should update assumption if same ID appears again"""
+        """Should update verification fields when core fields match"""
         session_id = "test-session"
 
         # First thought with assumption
@@ -362,16 +362,24 @@ class TestAssumptionTracking:
         assert response1.all_assumptions["A1"].text == "Original text"
         assert response1.all_assumptions["A1"].confidence == 0.5
 
-        # Second thought updates the assumption
+        # Second thought updates verification fields (keeping same text)
         request2 = ThoughtRequest(
             thought="Updated thought",
             total_thoughts=3,
             session_id=session_id,
-            assumptions=[Assumption(id="A1", text="Updated text", confidence=0.9)],
+            assumptions=[
+                Assumption(
+                    id="A1",
+                    text="Original text",  # Same text - core field is immutable
+                    confidence=0.9,  # Updated confidence - allowed
+                    verification_status="verified_true",  # Updated status - allowed
+                )
+            ],
         )
         response2 = service.process_thought(request2)
-        assert response2.all_assumptions["A1"].text == "Updated text"
-        assert response2.all_assumptions["A1"].confidence == 0.9
+        assert response2.all_assumptions["A1"].text == "Original text"  # Unchanged
+        assert response2.all_assumptions["A1"].confidence == 0.9  # Updated
+        assert response2.all_assumptions["A1"].verification_status == "verified_true"
 
     def test_verify_assumption(self, service: UltraThinkService) -> None:
         """Should mark assumption as verified when explicitly set"""
@@ -483,3 +491,130 @@ class TestAssumptionTracking:
         # Should not raise any errors
         response = service.process_thought(request)
         assert isinstance(response, ThoughtResponse)
+
+    def test_update_assumption_verification_fields(
+        self, service: UltraThinkService
+    ) -> None:
+        """Should allow updating verification-related fields when core fields match"""
+        session_id = "test-session"
+
+        # First thought creates assumption
+        request1 = ThoughtRequest(
+            thought="Initial assumption",
+            total_thoughts=3,
+            session_id=session_id,
+            assumptions=[
+                Assumption(
+                    id="A1",
+                    text="Cache hit rate > 70%",
+                    confidence=0.6,
+                    critical=True,
+                    verifiable=True,
+                )
+            ],
+        )
+        response1 = service.process_thought(request1)
+        assert response1.all_assumptions["A1"].confidence == 0.6
+        assert response1.all_assumptions["A1"].verification_status is None
+
+        # Second thought updates verification fields (same text and critical)
+        request2 = ThoughtRequest(
+            thought="After testing, verified the assumption",
+            total_thoughts=3,
+            session_id=session_id,
+            assumptions=[
+                Assumption(
+                    id="A1",
+                    text="Cache hit rate > 70%",  # Same text
+                    confidence=0.95,  # Updated confidence
+                    critical=True,  # Same critical
+                    verifiable=True,
+                    evidence="Verified in production",  # New evidence
+                    verification_status="verified_true",  # Updated status
+                )
+            ],
+        )
+        response2 = service.process_thought(request2)
+        # Should update successfully
+        assert response2.all_assumptions["A1"].confidence == 0.95
+        assert response2.all_assumptions["A1"].verification_status == "verified_true"
+        assert response2.all_assumptions["A1"].evidence == "Verified in production"
+
+    def test_update_assumption_text_mismatch_error(
+        self, service: UltraThinkService
+    ) -> None:
+        """Should raise error when updating assumption with different text"""
+        session_id = "test-session"
+
+        # First thought creates assumption
+        request1 = ThoughtRequest(
+            thought="Initial assumption",
+            total_thoughts=3,
+            session_id=session_id,
+            assumptions=[
+                Assumption(id="A1", text="Cache hit rate > 70%", confidence=0.6)
+            ],
+        )
+        service.process_thought(request1)
+
+        # Second thought tries to update with different text
+        request2 = ThoughtRequest(
+            thought="Trying to change assumption text",
+            total_thoughts=3,
+            session_id=session_id,
+            assumptions=[
+                Assumption(
+                    id="A1",
+                    text="Database has indexes",  # Different text!
+                    confidence=0.8,
+                )
+            ],
+        )
+
+        with pytest.raises(ValueError) as exc_info:
+            service.process_thought(request2)
+        assert "Cannot update assumption A1" in str(exc_info.value)
+        assert "text mismatch" in str(exc_info.value)
+        assert "Cache hit rate > 70%" in str(exc_info.value)
+        assert "Database has indexes" in str(exc_info.value)
+        assert "immutable" in str(exc_info.value)
+
+    def test_update_assumption_critical_mismatch_error(
+        self, service: UltraThinkService
+    ) -> None:
+        """Should raise error when updating assumption with different critical flag"""
+        session_id = "test-session"
+
+        # First thought creates assumption
+        request1 = ThoughtRequest(
+            thought="Initial assumption",
+            total_thoughts=3,
+            session_id=session_id,
+            assumptions=[
+                Assumption(
+                    id="A1", text="Cache hit rate > 70%", confidence=0.6, critical=True
+                )
+            ],
+        )
+        service.process_thought(request1)
+
+        # Second thought tries to update with different critical flag
+        request2 = ThoughtRequest(
+            thought="Trying to change critical flag",
+            total_thoughts=3,
+            session_id=session_id,
+            assumptions=[
+                Assumption(
+                    id="A1",
+                    text="Cache hit rate > 70%",  # Same text
+                    confidence=0.8,
+                    critical=False,  # Different critical!
+                )
+            ],
+        )
+
+        with pytest.raises(ValueError) as exc_info:
+            service.process_thought(request2)
+        assert "Cannot update assumption A1" in str(exc_info.value)
+        assert "critical flag mismatch" in str(exc_info.value)
+        assert "immutable" in str(exc_info.value)

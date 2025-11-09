@@ -138,10 +138,12 @@ def ultrathink(
         Field(
             None,
             description=(
-                "Assumptions made in this thought. Each assumption should have: "
-                "id (e.g., 'A1'), text (the assumption), confidence (0.0-1.0, default 1.0), "
+                "Assumptions made in this thought. Required fields: "
+                "id (e.g., 'A1'), text (the assumption). "
+                "Optional fields: confidence (0.0-1.0, default 1.0), "
                 "critical (bool, default True), verifiable (bool, default False), "
-                "evidence (optional explanation), verification_status (optional: 'unverified', 'verified_true', 'verified_false')"
+                "evidence (str, default None), verification_status ('unverified'|'verified_true'|'verified_false', default None). "
+                "Note: Core fields (text, critical) are immutable after creation - only verification fields can be updated."
             ),
         ),
     ] = None,

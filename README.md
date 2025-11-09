@@ -233,7 +233,8 @@ async with Client(mcp) as client:
                 "text": "Network latency to Redis < 5ms",
                 "confidence": 0.8,
                 "critical": True,
-                "verifiable": True
+                "verifiable": True,
+                "evidence": "Based on preliminary network tests in staging environment"
             }
         ]
     })

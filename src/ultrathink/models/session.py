@@ -110,12 +110,29 @@ class ThinkingSession:
         if thought.assumptions:
             for assumption in thought.assumptions:
                 if assumption.id in self._assumptions:
-                    # Update existing assumption
+                    # Validate that core fields match when updating
+                    existing = self._assumptions[assumption.id]
+                    if existing.text != assumption.text:
+                        raise ValueError(
+                            f"Cannot update assumption {assumption.id}: text mismatch. "
+                            f"Existing: '{existing.text}', New: '{assumption.text}'. "
+                            f"Core assumption fields (text, critical) are immutable."
+                        )
+                    if existing.critical != assumption.critical:
+                        raise ValueError(
+                            f"Cannot update assumption {assumption.id}: critical flag mismatch. "
+                            f"Existing: {existing.critical}, New: {assumption.critical}. "
+                            f"Core assumption fields (text, critical) are immutable."
+                        )
+                    # Allow updating verification-related fields
                     if not self._disable_logging:
                         _get_console().print(
-                            f"[yellow]⚠️  Updating assumption {assumption.id}[/yellow]"
+                            f"[yellow]⚠️  Updating assumption {assumption.id} (verification status or confidence)[/yellow]"
                         )
-                    self._assumptions[assumption.id] = assumption
+                    existing.confidence = assumption.confidence
+                    existing.verifiable = assumption.verifiable
+                    existing.evidence = assumption.evidence
+                    existing.verification_status = assumption.verification_status
                 else:
                     # Add new assumption
                     self._assumptions[assumption.id] = assumption
