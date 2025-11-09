@@ -134,11 +134,12 @@ def ultrathink(
         ),
     ] = None,
     assumptions: Annotated[
-        list[Assumption] | None,
+        list[Assumption] | str | None,
         Field(
             None,
             description=(
-                "Assumptions made in this thought. Required fields: "
+                "Assumptions made in this thought. Can be a list of Assumption objects or a JSON string. "
+                "Required fields: "
                 "id (e.g., 'A1'), text (the assumption). "
                 "Optional fields: confidence (0.0-1.0, default 1.0), "
                 "critical (bool, default True), verifiable (bool, default False), "
@@ -148,17 +149,17 @@ def ultrathink(
         ),
     ] = None,
     depends_on_assumptions: Annotated[
-        list[str] | None,
+        list[str] | str | None,
         Field(
             None,
-            description="Assumption IDs from previous thoughts that this thought depends on (e.g., ['A1', 'A2'])",
+            description="Assumption IDs from previous thoughts that this thought depends on (e.g., ['A1', 'A2'] or '[\"A1\", \"A2\"]' as JSON string)",
         ),
     ] = None,
     invalidates_assumptions: Annotated[
-        list[str] | None,
+        list[str] | str | None,
         Field(
             None,
-            description="Assumption IDs proven false by this thought (e.g., ['A3'])",
+            description="Assumption IDs proven false by this thought (e.g., ['A3'] or '[\"A3\"]' as JSON string)",
         ),
     ] = None,
 ) -> ThoughtResponse:
@@ -240,6 +241,8 @@ def ultrathink(
     16. Provide a single, ideally correct answer as the final output
     """
     # Construct ThoughtRequest from flat parameters
+    # Note: assumptions, depends_on_assumptions, and invalidates_assumptions can be str or list
+    # The field validators in ThoughtRequest will handle string-to-list conversion
     request = ThoughtRequest(
         thought=thought,
         thought_number=thought_number,
@@ -254,8 +257,8 @@ def ultrathink(
         confidence=confidence,
         uncertainty_notes=uncertainty_notes,
         outcome=outcome,
-        assumptions=assumptions,
-        depends_on_assumptions=depends_on_assumptions,
-        invalidates_assumptions=invalidates_assumptions,
+        assumptions=assumptions,  # type: ignore[arg-type]
+        depends_on_assumptions=depends_on_assumptions,  # type: ignore[arg-type]
+        invalidates_assumptions=invalidates_assumptions,  # type: ignore[arg-type]
     )
     return thinking_service.process_thought(request)

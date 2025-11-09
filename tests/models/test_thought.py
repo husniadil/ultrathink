@@ -277,3 +277,229 @@ class TestThought:
         assert "1/3" in formatted
         assert "⚠️  Uncertainty" not in formatted
         assert "✓ Outcome" not in formatted
+
+
+class TestThoughtJsonStringParsing:
+    """Test suite for JSON string parsing in Thought model"""
+
+    def test_assumptions_from_json_string(self) -> None:
+        """Should parse assumptions from JSON string"""
+        assumptions_json = (
+            '[{"id": "A1", "text": "Test assumption", "confidence": 0.8}]'
+        )
+
+        thought = Thought(
+            thought="Test",
+            thought_number=1,
+            total_thoughts=3,
+            next_thought_needed=True,
+            assumptions=assumptions_json,  # type: ignore[arg-type]
+        )
+
+        assert thought.assumptions is not None
+        assert len(thought.assumptions) == 1
+        assert thought.assumptions[0].id == "A1"
+        assert thought.assumptions[0].text == "Test assumption"
+        assert thought.assumptions[0].confidence == 0.8
+
+    def test_assumptions_from_list(self) -> None:
+        """Should accept assumptions as proper list"""
+        from ultrathink.models.assumption import Assumption
+
+        assumptions = [Assumption(id="A1", text="Test assumption", confidence=0.8)]
+
+        thought = Thought(
+            thought="Test",
+            thought_number=1,
+            total_thoughts=3,
+            next_thought_needed=True,
+            assumptions=assumptions,
+        )
+
+        assert thought.assumptions is not None
+        assert len(thought.assumptions) == 1
+        assert thought.assumptions[0].id == "A1"
+
+    def test_depends_on_assumptions_from_json_string(self) -> None:
+        """Should parse depends_on_assumptions from JSON string"""
+        depends_json = '["A1", "A2", "A3"]'
+
+        thought = Thought(
+            thought="Test",
+            thought_number=1,
+            total_thoughts=3,
+            next_thought_needed=True,
+            depends_on_assumptions=depends_json,  # type: ignore[arg-type]
+        )
+
+        assert thought.depends_on_assumptions == ["A1", "A2", "A3"]
+
+    def test_depends_on_assumptions_from_list(self) -> None:
+        """Should accept depends_on_assumptions as proper list"""
+        thought = Thought(
+            thought="Test",
+            thought_number=1,
+            total_thoughts=3,
+            next_thought_needed=True,
+            depends_on_assumptions=["A1", "A2"],
+        )
+
+        assert thought.depends_on_assumptions == ["A1", "A2"]
+
+    def test_invalidates_assumptions_from_json_string(self) -> None:
+        """Should parse invalidates_assumptions from JSON string"""
+        invalidates_json = '["A1", "A2"]'
+
+        thought = Thought(
+            thought="Test",
+            thought_number=1,
+            total_thoughts=3,
+            next_thought_needed=True,
+            invalidates_assumptions=invalidates_json,  # type: ignore[arg-type]
+        )
+
+        assert thought.invalidates_assumptions == ["A1", "A2"]
+
+    def test_invalidates_assumptions_from_list(self) -> None:
+        """Should accept invalidates_assumptions as proper list"""
+        thought = Thought(
+            thought="Test",
+            thought_number=1,
+            total_thoughts=3,
+            next_thought_needed=True,
+            invalidates_assumptions=["A1"],
+        )
+
+        assert thought.invalidates_assumptions == ["A1"]
+
+    def test_assumptions_empty_string_treated_as_none(self) -> None:
+        """Should treat empty string as None"""
+        thought = Thought(
+            thought="Test",
+            thought_number=1,
+            total_thoughts=3,
+            next_thought_needed=True,
+            assumptions="",  # type: ignore[arg-type]
+        )
+
+        assert thought.assumptions is None
+
+    def test_assumptions_null_string_treated_as_none(self) -> None:
+        """Should treat 'null' string as None"""
+        thought = Thought(
+            thought="Test",
+            thought_number=1,
+            total_thoughts=3,
+            next_thought_needed=True,
+            assumptions="null",  # type: ignore[arg-type]
+        )
+
+        assert thought.assumptions is None
+
+    def test_assumptions_invalid_json_raises_error(self) -> None:
+        """Should raise error for invalid JSON"""
+        with pytest.raises(ValueError, match="assumptions must be valid JSON"):
+            Thought(
+                thought="Test",
+                thought_number=1,
+                total_thoughts=3,
+                next_thought_needed=True,
+                assumptions='{"invalid": json}',  # type: ignore[arg-type]
+            )
+
+    def test_assumptions_non_list_json_raises_error(self) -> None:
+        """Should raise error when JSON is not a list"""
+        with pytest.raises(
+            ValueError, match="assumptions must be a list or valid JSON string"
+        ):
+            Thought(
+                thought="Test",
+                thought_number=1,
+                total_thoughts=3,
+                next_thought_needed=True,
+                assumptions='{"id": "A1"}',  # type: ignore[arg-type]
+            )
+
+    def test_depends_on_invalid_json_raises_error(self) -> None:
+        """Should raise error for invalid JSON in depends_on_assumptions"""
+        with pytest.raises(
+            ValueError, match="depends_on_assumptions must be valid JSON"
+        ):
+            Thought(
+                thought="Test",
+                thought_number=1,
+                total_thoughts=3,
+                next_thought_needed=True,
+                depends_on_assumptions="[invalid json]",  # type: ignore[arg-type]
+            )
+
+    def test_invalidates_non_list_json_raises_error(self) -> None:
+        """Should raise error when invalidates_assumptions JSON is not a list"""
+        with pytest.raises(
+            ValueError,
+            match="invalidates_assumptions must be a list or valid JSON string",
+        ):
+            Thought(
+                thought="Test",
+                thought_number=1,
+                total_thoughts=3,
+                next_thought_needed=True,
+                invalidates_assumptions='"A1"',  # type: ignore[arg-type]
+            )
+
+    def test_unexpected_type_raises_error(self) -> None:
+        """Should raise error when value is unexpected type (not None, list, or string)"""
+        with pytest.raises(ValueError, match="must be a list or JSON string"):
+            Thought(
+                thought="Test",
+                thought_number=1,
+                total_thoughts=3,
+                next_thought_needed=True,
+                assumptions=123,  # type: ignore[arg-type]
+            )
+
+    def test_format_thought_with_assumptions(self) -> None:
+        """Should format thought with assumptions in output"""
+        from ultrathink.models.assumption import Assumption
+
+        thought = Thought(
+            thought="Test with assumptions",
+            thought_number=1,
+            total_thoughts=3,
+            next_thought_needed=True,
+            assumptions=[
+                Assumption(id="A1", text="First assumption", confidence=0.8),
+                Assumption(id="A2", text="Second assumption", confidence=0.9),
+            ],
+        )
+
+        formatted = thought.format()
+        assert "📋 Assumptions:" in formatted
+        assert "A1: First assumption" in formatted
+        assert "A2: Second assumption" in formatted
+
+    def test_format_thought_with_depends_on_assumptions(self) -> None:
+        """Should format thought with depends_on_assumptions in output"""
+        thought = Thought(
+            thought="Depends on previous assumptions",
+            thought_number=2,
+            total_thoughts=3,
+            next_thought_needed=True,
+            depends_on_assumptions=["A1", "A2"],
+        )
+
+        formatted = thought.format()
+        assert "📎 Depends on: A1, A2" in formatted
+
+    def test_format_thought_with_invalidates_assumptions(self) -> None:
+        """Should format thought with invalidates_assumptions in output"""
+        thought = Thought(
+            thought="Invalidating previous assumptions",
+            thought_number=2,
+            total_thoughts=3,
+            next_thought_needed=True,
+            invalidates_assumptions=["A1"],
+        )
+
+        formatted = thought.format()
+        assert "❌ Invalidates: A1" in formatted

@@ -143,6 +143,45 @@ class TestLogging:
         assert response.uncertainty_notes == "Need more testing"
         assert response.outcome == "Partial success"
 
+    def test_update_assumption_with_logging_enabled(
+        self, server_with_logging: UltraThinkService
+    ) -> None:
+        """Should log when updating assumption verification fields with logging enabled"""
+        session_id = "test-session"
+
+        # First thought creates assumption
+        request1 = ThoughtRequest(
+            thought="Initial assumption",
+            total_thoughts=3,
+            session_id=session_id,
+            assumptions=[
+                Assumption(
+                    id="A1",
+                    text="Test assumption",
+                    confidence=0.6,
+                )
+            ],
+        )
+        server_with_logging.process_thought(request1)
+
+        # Second thought updates verification (should trigger logging)
+        request2 = ThoughtRequest(
+            thought="Updating assumption",
+            total_thoughts=3,
+            session_id=session_id,
+            assumptions=[
+                Assumption(
+                    id="A1",
+                    text="Test assumption",  # Same
+                    confidence=0.9,  # Updated
+                    verification_status="verified_true",
+                )
+            ],
+        )
+        response = server_with_logging.process_thought(request2)
+        assert response.all_assumptions["A1"].confidence == 0.9
+        assert response.all_assumptions["A1"].verification_status == "verified_true"
+
 
 class TestAssumptionTracking:
     """Test suite for assumption tracking functionality"""
@@ -618,3 +657,35 @@ class TestAssumptionTracking:
         assert "Cannot update assumption A1" in str(exc_info.value)
         assert "critical flag mismatch" in str(exc_info.value)
         assert "immutable" in str(exc_info.value)
+
+    def test_verify_assumption_method_found(self, service: UltraThinkService) -> None:
+        """Should verify assumption and return it when found"""
+        from ultrathink.models.session import ThinkingSession
+
+        session = ThinkingSession()
+
+        # Add assumption first
+        assumption = Assumption(id="A1", text="Test assumption")
+        session._assumptions[assumption.id] = assumption
+
+        # Verify it
+        result = session.verify_assumption("A1", is_true=True)
+        assert result is not None
+        assert result.verification_status == "verified_true"
+
+        # Verify as false
+        result2 = session.verify_assumption("A1", is_true=False)
+        assert result2 is not None
+        assert result2.verification_status == "verified_false"
+
+    def test_verify_assumption_method_not_found(
+        self, service: UltraThinkService
+    ) -> None:
+        """Should return None when assumption ID not found"""
+        from ultrathink.models.session import ThinkingSession
+
+        session = ThinkingSession()
+
+        # Try to verify non-existent assumption
+        result = session.verify_assumption("A99", is_true=True)
+        assert result is None

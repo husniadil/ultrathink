@@ -1,4 +1,5 @@
-from typing import Annotated
+from typing import Annotated, Any
+import json
 from pydantic import BaseModel, Field, field_validator
 from .assumption import Assumption
 
@@ -8,6 +9,47 @@ def _validate_thought_not_empty(value: str) -> str:
     if not value or not value.strip():
         raise ValueError("thought must be a non-empty string")
     return value
+
+
+def _parse_json_list(value: Any, field_name: str) -> Any:
+    """
+    Helper function to parse JSON string to list, or return value as-is
+
+    Args:
+        value: Input value (can be None, str, or list)
+        field_name: Name of the field (for error messages)
+
+    Returns:
+        Parsed list or None, or original value if already a list
+
+    Raises:
+        ValueError: If string is not valid JSON or not a list
+    """
+    # Handle None and empty/null strings
+    if value is None or value == "" or value == "null":
+        return None
+
+    # If already a list, return as-is
+    if isinstance(value, list):
+        return value
+
+    # Parse JSON string
+    if isinstance(value, str):
+        try:
+            parsed = json.loads(value)
+            if not isinstance(parsed, list):
+                raise ValueError(
+                    f"{field_name} must be a list or valid JSON string representing a list. "
+                    f"Got type: {type(parsed).__name__}"
+                )
+            return parsed
+        except json.JSONDecodeError as e:
+            raise ValueError(f"{field_name} must be valid JSON. Error: {str(e)}") from e
+
+    # Unexpected type
+    raise ValueError(
+        f"{field_name} must be a list or JSON string, got {type(value).__name__}"
+    )
 
 
 class Thought(BaseModel):
@@ -81,21 +123,21 @@ class Thought(BaseModel):
         list[Assumption] | None,
         Field(
             None,
-            description="Assumptions made in this thought",
+            description="Assumptions made in this thought (accepts list or JSON string via validator)",
         ),
     ] = None
     depends_on_assumptions: Annotated[
         list[str] | None,
         Field(
             None,
-            description="Assumption IDs from previous thoughts that this thought depends on",
+            description="Assumption IDs from previous thoughts that this thought depends on (accepts list or JSON string via validator)",
         ),
     ] = None
     invalidates_assumptions: Annotated[
         list[str] | None,
         Field(
             None,
-            description="Assumption IDs proven false by this thought",
+            description="Assumption IDs proven false by this thought (accepts list or JSON string via validator)",
         ),
     ] = None
 
@@ -103,6 +145,24 @@ class Thought(BaseModel):
     @classmethod
     def validate_thought_not_empty(cls, v: str) -> str:
         return _validate_thought_not_empty(v)
+
+    @field_validator("assumptions", mode="before")
+    @classmethod
+    def validate_assumptions(cls, v: Any) -> Any:
+        """Parse assumptions from JSON string or list"""
+        return _parse_json_list(v, "assumptions")
+
+    @field_validator("depends_on_assumptions", mode="before")
+    @classmethod
+    def validate_depends_on_assumptions(cls, v: Any) -> Any:
+        """Parse depends_on_assumptions from JSON string or list"""
+        return _parse_json_list(v, "depends_on_assumptions")
+
+    @field_validator("invalidates_assumptions", mode="before")
+    @classmethod
+    def validate_invalidates_assumptions(cls, v: Any) -> Any:
+        """Parse invalidates_assumptions from JSON string or list"""
+        return _parse_json_list(v, "invalidates_assumptions")
 
     @property
     def is_branch(self) -> bool:
@@ -364,21 +424,21 @@ class ThoughtRequest(BaseModel):
         list[Assumption] | None,
         Field(
             None,
-            description="Assumptions made in this thought",
+            description="Assumptions made in this thought (accepts list or JSON string via validator)",
         ),
     ] = None
     depends_on_assumptions: Annotated[
         list[str] | None,
         Field(
             None,
-            description="Assumption IDs from previous thoughts that this thought depends on",
+            description="Assumption IDs from previous thoughts that this thought depends on (accepts list or JSON string via validator)",
         ),
     ] = None
     invalidates_assumptions: Annotated[
         list[str] | None,
         Field(
             None,
-            description="Assumption IDs proven false by this thought",
+            description="Assumption IDs proven false by this thought (accepts list or JSON string via validator)",
         ),
     ] = None
 
@@ -386,6 +446,24 @@ class ThoughtRequest(BaseModel):
     @classmethod
     def validate_thought_not_empty(cls, v: str) -> str:
         return _validate_thought_not_empty(v)
+
+    @field_validator("assumptions", mode="before")
+    @classmethod
+    def validate_assumptions(cls, v: Any) -> Any:
+        """Parse assumptions from JSON string or list"""
+        return _parse_json_list(v, "assumptions")
+
+    @field_validator("depends_on_assumptions", mode="before")
+    @classmethod
+    def validate_depends_on_assumptions(cls, v: Any) -> Any:
+        """Parse depends_on_assumptions from JSON string or list"""
+        return _parse_json_list(v, "depends_on_assumptions")
+
+    @field_validator("invalidates_assumptions", mode="before")
+    @classmethod
+    def validate_invalidates_assumptions(cls, v: Any) -> Any:
+        """Parse invalidates_assumptions from JSON string or list"""
+        return _parse_json_list(v, "invalidates_assumptions")
 
 
 class ThoughtResponse(BaseModel):
