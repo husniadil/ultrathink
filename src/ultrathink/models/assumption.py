@@ -13,7 +13,7 @@ class Assumption(BaseModel):
     id: Annotated[
         str,
         Field(
-            min_length=1,
+            pattern=r"^A\d+$",
             description="Unique identifier for this assumption (e.g., 'A1', 'A2')",
         ),
     ]

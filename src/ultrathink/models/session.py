@@ -111,6 +111,10 @@ class ThinkingSession:
             for assumption in thought.assumptions:
                 if assumption.id in self._assumptions:
                     # Update existing assumption
+                    if not self._disable_logging:
+                        _get_console().print(
+                            f"[yellow]⚠️  Updating assumption {assumption.id}[/yellow]"
+                        )
                     self._assumptions[assumption.id] = assumption
                 else:
                     # Add new assumption
@@ -119,10 +123,13 @@ class ThinkingSession:
         # Handle assumption invalidations
         if thought.invalidates_assumptions:
             for assumption_id in thought.invalidates_assumptions:
-                if assumption_id in self._assumptions:
-                    self._assumptions[
-                        assumption_id
-                    ].verification_status = "verified_false"
+                if assumption_id not in self._assumptions:
+                    available = sorted(self._assumptions.keys())
+                    raise ValueError(
+                        f"Cannot invalidate assumption {assumption_id}: assumption not found in this session. "
+                        f"Available assumptions: {available if available else 'none'}"
+                    )
+                self._assumptions[assumption_id].verification_status = "verified_false"
 
         # Add to history
         self._thoughts.append(thought)

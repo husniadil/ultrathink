@@ -46,6 +46,28 @@ class TestAssumptionModel:
         with pytest.raises(ValidationError):
             Assumption(id="", text="Test assumption")
 
+    def test_id_pattern_validation(self) -> None:
+        """Test ID must follow pattern ^A\\d+$"""
+        # Valid patterns
+        Assumption(id="A1", text="Test")
+        Assumption(id="A2", text="Test")
+        Assumption(id="A10", text="Test")
+        Assumption(id="A100", text="Test")
+
+        # Invalid patterns
+        with pytest.raises(ValidationError):
+            Assumption(id="a1", text="Test")  # lowercase
+        with pytest.raises(ValidationError):
+            Assumption(id="B1", text="Test")  # wrong letter
+        with pytest.raises(ValidationError):
+            Assumption(id="A", text="Test")  # no number
+        with pytest.raises(ValidationError):
+            Assumption(id="A1B", text="Test")  # extra characters
+        with pytest.raises(ValidationError):
+            Assumption(id="1A", text="Test")  # reversed
+        with pytest.raises(ValidationError):
+            Assumption(id="AA1", text="Test")  # extra letter
+
     def test_invalid_text(self) -> None:
         """Test validation error for empty text"""
         with pytest.raises(ValidationError):

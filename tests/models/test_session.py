@@ -250,6 +250,21 @@ class TestAssumptionTracking:
         assert "Cannot depend on assumption A99" in str(exc_info.value)
         assert "assumption not found" in str(exc_info.value)
 
+    def test_invalidate_nonexistent_assumption_error(
+        self, service: UltraThinkService
+    ) -> None:
+        """Should raise error when invalidating non-existent assumption"""
+        request = ThoughtRequest(
+            thought="Test thought",
+            total_thoughts=3,
+            invalidates_assumptions=["A99"],  # Doesn't exist
+        )
+
+        with pytest.raises(ValueError) as exc_info:
+            service.process_thought(request)
+        assert "Cannot invalidate assumption A99" in str(exc_info.value)
+        assert "assumption not found" in str(exc_info.value)
+
     def test_invalidate_assumption(self, service: UltraThinkService) -> None:
         """Should mark assumptions as falsified when invalidated"""
         session_id = "test-session"
@@ -375,6 +390,54 @@ class TestAssumptionTracking:
         response = service.process_thought(request)
         assert response.all_assumptions["A1"].verification_status == "verified_true"
         assert "A1" not in response.falsified_assumptions
+
+    def test_get_affected_thoughts(self, service: UltraThinkService) -> None:
+        """Should find all thoughts that depend on a given assumption"""
+        session_id = "test-session"
+
+        # T1: Add assumption A1
+        request1 = ThoughtRequest(
+            thought="Adding assumption A1",
+            total_thoughts=5,
+            session_id=session_id,
+            assumptions=[Assumption(id="A1", text="Dataset < 1GB")],
+        )
+        service.process_thought(request1)
+
+        # T2: Depends on A1
+        request2 = ThoughtRequest(
+            thought="Using A1",
+            total_thoughts=5,
+            session_id=session_id,
+            depends_on_assumptions=["A1"],
+        )
+        service.process_thought(request2)
+
+        # T3: No dependencies
+        request3 = ThoughtRequest(
+            thought="Independent thought",
+            total_thoughts=5,
+            session_id=session_id,
+        )
+        service.process_thought(request3)
+
+        # T4: Also depends on A1
+        request4 = ThoughtRequest(
+            thought="Also using A1",
+            total_thoughts=5,
+            session_id=session_id,
+            depends_on_assumptions=["A1"],
+        )
+        service.process_thought(request4)
+
+        # Get session and check affected thoughts
+        session = service._sessions[session_id]
+        affected = session.get_affected_thoughts("A1")
+        assert affected == [2, 4]
+
+        # Non-existent assumption returns empty list
+        affected_none = session.get_affected_thoughts("A99")
+        assert affected_none == []
 
     def test_multiple_sessions_isolated_assumptions(
         self, service: UltraThinkService
