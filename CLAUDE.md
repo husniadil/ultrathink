@@ -169,7 +169,7 @@ This design choice keeps the implementation simple and stateless-friendly, but d
 
 ### Assumption Tracking
 
-**New in v2.0**: The ultrathink tool now supports explicit assumption tracking to make reasoning more transparent and adaptive.
+The ultrathink tool supports explicit assumption tracking to make reasoning more transparent and adaptive.
 
 #### Key Features
 
@@ -244,11 +244,112 @@ assumptions = [
 3. **Supports hypothesis testing**: Explicitly state and verify assumptions
 4. **Improves transparency**: Clear what's certain vs uncertain in reasoning
 
+#### Confidence and Uncertainty Tracking
+
+Each thought can include confidence levels, uncertainty notes, and outcomes to make reasoning more transparent.
+
+**Available Fields:**
+
+- **`confidence`** (float, 0.0-1.0): Express your confidence level in this thought
+  - Low (0.3-0.6): Exploratory thinking, initial hypotheses, uncertain analysis
+  - Medium (0.6-0.8): Reasoned analysis, likely conclusions, working hypotheses
+  - High (0.8-1.0): Verified solutions, confident conclusions, proven facts
+
+- **`uncertainty_notes`** (str, optional): Explain what you're uncertain about or what concerns you have
+  - Use this to explicitly state doubts, risks, or things that need verification
+  - Helps track what needs more investigation
+
+- **`outcome`** (str, optional): Describe what was achieved or expected from this thought
+  - Documents the result of the reasoning step
+  - Useful for tracking decisions and their justifications
+
+**Example Usage:**
+
+```python
+# Thought 1: Uncertain exploration
+ThoughtRequest(
+    thought="We could use Redis for caching, but need to verify performance",
+    total_thoughts=5,
+    confidence=0.6,
+    uncertainty_notes="Haven't tested with production-scale load yet"
+)
+
+# Thought 2: Investigating uncertainty
+ThoughtRequest(
+    thought="Ran load tests - Redis handles 50K req/sec with p99 < 10ms",
+    total_thoughts=5,
+    confidence=0.9,
+    outcome="Confirmed Redis meets performance requirements"
+)
+
+# Thought 3: Final decision
+ThoughtRequest(
+    thought="Proceeding with Redis implementation",
+    total_thoughts=5,
+    confidence=0.95,
+    outcome="Decision made to use Redis based on successful load tests"
+)
+```
+
+**Display Format:**
+
+When thoughts are logged, these fields appear with visual indicators:
+- Confidence: Shows as percentage in header `[Confidence: 90%]`
+- Uncertainty: Prefixed with `⚠️  Uncertainty:` (shown prominently)
+- Outcome: Prefixed with `✓ Outcome:` (shown at end of thought)
+
 #### Assumption ID Format
 
-- Must follow pattern: `^A\d+$` (e.g., "A1", "A2", "A10")
+- **Local format**: `^A\d+$` (e.g., "A1", "A2", "A10")
+- **Cross-session format**: `^[\w-]+:A\d+$` (e.g., "session-1:A1", "uuid-123:A2")
 - Case-sensitive: "a1" is invalid, must be "A1"
 - Sequential numbering recommended but not enforced
+
+#### Cross-Session Assumption References
+
+**Feature**: Reference assumptions from previous thinking sessions
+
+**Use Case**: When reasoning across multiple sessions, you can now reference assumptions made in earlier sessions without raising errors.
+
+**Format**:
+- Local reference: `"A1"` (same session)
+- Cross-session reference: `"session-id:A1"` (from another session)
+
+**Behavior**:
+- **Local references** are strictly validated (must exist in current session)
+- **Cross-session references** use graceful handling:
+  - If session or assumption not found → added to `unresolved_references`
+  - Warning logged (if logging enabled)
+  - Execution continues normally
+
+**Response Fields**:
+- `unresolved_references: list[str]` - IDs of cross-session assumptions that couldn't be resolved
+- `cross_session_warnings: list[str]` - Warning messages from cross-session operations
+
+**Example**:
+
+```python
+# Session 1: Create assumption
+ThoughtRequest(
+    thought="Redis will work",
+    session_id="session-1",
+    assumptions=[Assumption(id="A1", text="Redis latency < 5ms")]
+)
+
+# Session 2: Reference assumption from session 1
+ThoughtRequest(
+    thought="Building on previous session's assumption",
+    session_id="session-2",
+    depends_on_assumptions=["session-1:A1"]
+)
+# → If session-1:A1 exists: tracks dependency
+# → If not found: adds to unresolved_references, continues execution
+```
+
+**Limitations**:
+- **Cross-session invalidation not supported**: Attempting to invalidate `session-x:A1` produces warning
+- **No assumption copying**: Cross-session refs track dependencies only, don't copy assumptions
+- **Session must exist at runtime**: References are resolved against in-memory sessions only
 
 ## Dependencies
 

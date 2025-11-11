@@ -4,6 +4,7 @@ import pytest
 from pydantic import ValidationError
 from ultrathink.services.thinking_service import UltraThinkService
 from ultrathink.models.thought import ThoughtRequest, ThoughtResponse
+from ultrathink.models.assumption import Assumption
 
 
 class TestUltraThinkService:
@@ -1050,3 +1051,187 @@ class TestUltraThinkService:
         assert response.confidence == 0.9
         assert response.uncertainty_notes is None
         assert response.outcome is None
+
+
+class TestCrossSessionAssumptionReferences:
+    """Test suite for cross-session assumption references"""
+
+    @pytest.fixture
+    def service(self) -> Generator[UltraThinkService, None, None]:
+        """Create service instance with logging disabled"""
+        os.environ["DISABLE_THOUGHT_LOGGING"] = "true"
+        server = UltraThinkService()
+        yield server
+        if "DISABLE_THOUGHT_LOGGING" in os.environ:
+            del os.environ["DISABLE_THOUGHT_LOGGING"]
+
+    def test_cross_session_assumption_reference_success(
+        self, service: UltraThinkService
+    ) -> None:
+        """Test successful cross-session assumption reference"""
+        # Session 1: Create assumption A1
+        request1 = ThoughtRequest(
+            thought="Creating assumption A1",
+            total_thoughts=2,
+            session_id="session-1",
+            assumptions=[Assumption(id="A1", text="Test assumption")],
+        )
+        service.process_thought(request1)
+
+        # Session 2: Reference session-1:A1
+        request2 = ThoughtRequest(
+            thought="Using assumption from session 1",
+            total_thoughts=2,
+            session_id="session-2",
+            depends_on_assumptions=["session-1:A1"],
+        )
+        response2 = service.process_thought(request2)
+
+        # Should succeed with no unresolved references
+        assert len(response2.unresolved_references) == 0
+        assert "session-1:A1" not in response2.unresolved_references
+
+    def test_cross_session_assumption_reference_missing_session(
+        self, service: UltraThinkService
+    ) -> None:
+        """Test cross-session reference to non-existent session"""
+        request = ThoughtRequest(
+            thought="Reference non-existent session",
+            total_thoughts=2,
+            depends_on_assumptions=["nonexistent:A1"],
+        )
+        response = service.process_thought(request)
+
+        # Should track as unresolved
+        assert "nonexistent:A1" in response.unresolved_references
+
+    def test_cross_session_assumption_reference_missing_assumption(
+        self, service: UltraThinkService
+    ) -> None:
+        """Test cross-session reference to missing assumption in existing session"""
+        # Session 1: Create assumption A1 only
+        request1 = ThoughtRequest(
+            thought="Creating A1",
+            total_thoughts=2,
+            session_id="session-1",
+            assumptions=[Assumption(id="A1", text="Test")],
+        )
+        service.process_thought(request1)
+
+        # Session 2: Try to reference non-existent A99
+        request2 = ThoughtRequest(
+            thought="Reference missing assumption",
+            total_thoughts=2,
+            session_id="session-2",
+            depends_on_assumptions=["session-1:A99"],
+        )
+        response2 = service.process_thought(request2)
+
+        # Should track as unresolved
+        assert "session-1:A99" in response2.unresolved_references
+
+    def test_mixed_local_and_cross_session_references(
+        self, service: UltraThinkService
+    ) -> None:
+        """Test mix of local and cross-session references"""
+        # Session 1: Create A1
+        request1 = ThoughtRequest(
+            thought="Creating A1",
+            total_thoughts=2,
+            session_id="session-1",
+            assumptions=[Assumption(id="A1", text="Test")],
+        )
+        service.process_thought(request1)
+
+        # Session 2: Create A2
+        request2 = ThoughtRequest(
+            thought="Creating A2",
+            total_thoughts=3,
+            session_id="session-2",
+            assumptions=[Assumption(id="A2", text="Local")],
+        )
+        service.process_thought(request2)
+
+        # Session 2: Depend on both local A2 and cross-session A1
+        request3 = ThoughtRequest(
+            thought="Depending on both",
+            total_thoughts=3,
+            session_id="session-2",
+            depends_on_assumptions=["A2", "session-1:A1"],
+        )
+        response3 = service.process_thought(request3)
+
+        # Local A2 should work, cross-session A1 should be resolved
+        assert "A2" in response3.all_assumptions
+        assert "session-1:A1" not in response3.unresolved_references
+        assert len(response3.unresolved_references) == 0
+
+    def test_cross_session_invalidation_not_supported(
+        self, service: UltraThinkService
+    ) -> None:
+        """Test that cross-session invalidation produces warning"""
+        # Session 1: Create A1
+        request1 = ThoughtRequest(
+            thought="Creating A1",
+            total_thoughts=2,
+            session_id="session-1",
+            assumptions=[Assumption(id="A1", text="Test")],
+        )
+        service.process_thought(request1)
+
+        # Session 2: Try to invalidate session-1:A1
+        request2 = ThoughtRequest(
+            thought="Try to invalidate",
+            total_thoughts=2,
+            session_id="session-2",
+            invalidates_assumptions=["session-1:A1"],
+        )
+        response2 = service.process_thought(request2)
+
+        # Should have warning
+        assert len(response2.cross_session_warnings) > 0
+        assert "cross-session invalidation not supported" in response2.cross_session_warnings[0]
+
+    def test_resolve_cross_session_assumption_local_format(
+        self, service: UltraThinkService
+    ) -> None:
+        """Test resolution method with local format"""
+        local_id, resolved = service._resolve_cross_session_assumption("A1", "session-1")
+
+        # Local format should return as-is and be considered resolved
+        assert local_id == "A1"
+        assert resolved is True
+
+    def test_resolve_cross_session_assumption_missing_session(
+        self, service: UltraThinkService
+    ) -> None:
+        """Test resolution method with missing session"""
+        local_id, resolved = service._resolve_cross_session_assumption(
+            "nonexistent:A1", "session-2"
+        )
+
+        # Should not resolve
+        assert local_id is None
+        assert resolved is False
+
+    def test_resolve_cross_session_assumption_success(
+        self, service: UltraThinkService
+    ) -> None:
+        """Test resolution method with successful resolution"""
+        # Create session with assumption
+        request1 = ThoughtRequest(
+            thought="Creating A1",
+            total_thoughts=2,
+            session_id="session-1",
+            assumptions=[Assumption(id="A1", text="Test")],
+        )
+        service.process_thought(request1)
+
+        # Resolve cross-session reference
+        local_id, resolved = service._resolve_cross_session_assumption(
+            "session-1:A1", "session-2"
+        )
+
+        # Should resolve successfully
+        assert local_id == "A1"
+        assert resolved is True

@@ -531,3 +531,15 @@ class ThoughtResponse(BaseModel):
             description="IDs of assumptions proven false",
         ),
     ] = []
+    unresolved_references: Annotated[
+        list[str],
+        Field(
+            description="IDs of cross-session assumptions that could not be resolved (session or assumption not found)",
+        ),
+    ] = []
+    cross_session_warnings: Annotated[
+        list[str],
+        Field(
+            description="Warning messages from cross-session operations (e.g., attempted invalidation)",
+        ),
+    ] = []
