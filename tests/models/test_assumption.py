@@ -237,3 +237,40 @@ class TestAssumptionModel:
         assert assumption.id == "A1"
         assert assumption.text == "Test"
         assert assumption.confidence == 0.8
+
+    def test_scoped_id_local_format(self) -> None:
+        """Test local assumption ID format (backward compatible)"""
+        # Valid local formats
+        Assumption(id="A1", text="Test")
+        Assumption(id="A10", text="Test")
+        Assumption(id="A999", text="Test")
+
+    def test_scoped_id_cross_session_format(self) -> None:
+        """Test cross-session assumption ID format"""
+        # Valid scoped formats
+        Assumption(id="session-1:A1", text="Test")
+        Assumption(id="abc123:A1", text="Test")
+        Assumption(id="my-session:A10", text="Test")
+        Assumption(id="uuid-123-456:A1", text="Test")
+
+    def test_scoped_id_invalid_formats(self) -> None:
+        """Test invalid assumption ID formats"""
+        # Empty session ID
+        with pytest.raises(ValidationError):
+            Assumption(id=":A1", text="Test")
+
+        # Empty local ID
+        with pytest.raises(ValidationError):
+            Assumption(id="session:", text="Test")
+
+        # Double colon
+        with pytest.raises(ValidationError):
+            Assumption(id="session::A1", text="Test")
+
+        # Missing A prefix
+        with pytest.raises(ValidationError):
+            Assumption(id="session:1", text="Test")
+
+        # Missing number after A
+        with pytest.raises(ValidationError):
+            Assumption(id="session:A", text="Test")

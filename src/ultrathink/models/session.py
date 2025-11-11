@@ -9,6 +9,26 @@ def _get_console() -> Console:
     return Console(file=sys.stderr)
 
 
+def _parse_assumption_id(assumption_id: str) -> tuple[str | None, str]:
+    """
+    Parse scoped assumption ID into (session_id, local_id)
+
+    Args:
+        assumption_id: Either "A1" (local) or "session-id:A1" (cross-session)
+
+    Returns:
+        Tuple of (session_id, local_id) where session_id is None for local refs
+
+    Examples:
+        "A1" -> (None, "A1")
+        "session-123:A1" -> ("session-123", "A1")
+    """
+    if ":" in assumption_id:
+        parts = assumption_id.split(":", 1)
+        return parts[0], parts[1]
+    return None, assumption_id
+
+
 class ThinkingSession:
     """
     Model: Manages the sequential thinking session
@@ -20,6 +40,8 @@ class ThinkingSession:
         self._branches: dict[str, list[Thought]] = {}
         self._assumptions: dict[str, Assumption] = {}
         self._disable_logging = disable_logging
+        self._unresolved_refs: list[str] = []  # Track unresolved cross-session refs
+        self._cross_session_warnings: list[str] = []  # Track warnings
 
     @property
     def thought_count(self) -> int:
@@ -45,6 +67,16 @@ class ThinkingSession:
     def falsified_assumptions(self) -> list[str]:
         """Get IDs of assumptions proven false"""
         return [aid for aid, a in self._assumptions.items() if a.is_falsified]
+
+    @property
+    def unresolved_references(self) -> list[str]:
+        """Get IDs of unresolved cross-session assumption references"""
+        return self._unresolved_refs.copy()
+
+    @property
+    def cross_session_warnings(self) -> list[str]:
+        """Get warnings from cross-session operations"""
+        return self._cross_session_warnings.copy()
 
     def verify_assumption(self, assumption_id: str, is_true: bool) -> Assumption | None:
         """
@@ -84,10 +116,16 @@ class ThinkingSession:
                 affected.append(thought.thought_number)
         return affected
 
-    def add_thought(self, thought: Thought) -> None:
+    def add_thought(
+        self, thought: Thought, validated_cross_session_refs: list[str] | None = None
+    ) -> None:
         """
         Add a thought to the session
         Enforces business rules and manages branches
+
+        Args:
+            thought: The thought to add
+            validated_cross_session_refs: List of cross-session assumption IDs that have been validated by service layer
         """
         # Auto-adjust total if needed
         thought.auto_adjust_total()
@@ -99,12 +137,29 @@ class ThinkingSession:
         # Validate assumption dependencies
         if thought.depends_on_assumptions:
             for assumption_id in thought.depends_on_assumptions:
-                if assumption_id not in self._assumptions:
-                    available = sorted(self._assumptions.keys())
-                    raise ValueError(
-                        f"Cannot depend on assumption {assumption_id}: assumption not found in this session. "
-                        f"Available assumptions: {available if available else 'none'}"
-                    )
+                session_id, local_id = _parse_assumption_id(assumption_id)
+
+                if session_id is None:
+                    # Local reference - strict validation (existing behavior)
+                    if assumption_id not in self._assumptions:
+                        available = sorted(self._assumptions.keys())
+                        raise ValueError(
+                            f"Cannot depend on assumption {assumption_id}: assumption not found in this session. "
+                            f"Available assumptions: {available if available else 'none'}"
+                        )
+                else:
+                    # Cross-session reference - check if validated by service layer
+                    if validated_cross_session_refs and assumption_id in validated_cross_session_refs:
+                        # Successfully resolved by service layer, continue normally
+                        continue
+                    else:
+                        # Not validated - either resolution failed or no validation was performed
+                        if assumption_id not in self._unresolved_refs:
+                            self._unresolved_refs.append(assumption_id)
+                            if not self._disable_logging:
+                                _get_console().print(
+                                    f"[yellow]⚠️  Cross-session assumption {assumption_id} could not be resolved[/yellow]"
+                                )
 
         # Add new assumptions from this thought
         if thought.assumptions:
@@ -140,13 +195,23 @@ class ThinkingSession:
         # Handle assumption invalidations
         if thought.invalidates_assumptions:
             for assumption_id in thought.invalidates_assumptions:
-                if assumption_id not in self._assumptions:
-                    available = sorted(self._assumptions.keys())
-                    raise ValueError(
-                        f"Cannot invalidate assumption {assumption_id}: assumption not found in this session. "
-                        f"Available assumptions: {available if available else 'none'}"
-                    )
-                self._assumptions[assumption_id].verification_status = "verified_false"
+                session_id, local_id = _parse_assumption_id(assumption_id)
+
+                if session_id is None:
+                    # Local reference - existing behavior
+                    if assumption_id not in self._assumptions:
+                        available = sorted(self._assumptions.keys())
+                        raise ValueError(
+                            f"Cannot invalidate assumption {assumption_id}: assumption not found in this session. "
+                            f"Available assumptions: {available if available else 'none'}"
+                        )
+                    self._assumptions[assumption_id].verification_status = "verified_false"
+                else:
+                    # Cross-session invalidation - warn and skip
+                    warning = f"Cannot invalidate cross-session assumption {assumption_id}: cross-session invalidation not supported"
+                    self._cross_session_warnings.append(warning)
+                    if not self._disable_logging:
+                        _get_console().print(f"[yellow]⚠️  {warning}[/yellow]")
 
         # Add to history
         self._thoughts.append(thought)

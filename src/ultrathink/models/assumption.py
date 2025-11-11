@@ -13,8 +13,8 @@ class Assumption(BaseModel):
     id: Annotated[
         str,
         Field(
-            pattern=r"^A\d+$",
-            description="Unique identifier for this assumption (e.g., 'A1', 'A2')",
+            pattern=r"^(A\d+|[\w-]+:A\d+)$",
+            description="Unique identifier for this assumption (e.g., 'A1', 'A2' for local, 'session-id:A1' for cross-session)",
         ),
     ]
     text: Annotated[

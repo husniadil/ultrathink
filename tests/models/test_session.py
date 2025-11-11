@@ -689,3 +689,110 @@ class TestAssumptionTracking:
         # Try to verify non-existent assumption
         result = session.verify_assumption("A99", is_true=True)
         assert result is None
+
+
+class TestCrossSessionReferences:
+    """Test suite for cross-session assumption references"""
+
+    @pytest.fixture
+    def service(self) -> Generator[UltraThinkService, None, None]:
+        """Create a service instance with logging disabled"""
+        os.environ["DISABLE_THOUGHT_LOGGING"] = "true"
+        server = UltraThinkService()
+        yield server
+        if "DISABLE_THOUGHT_LOGGING" in os.environ:
+            del os.environ["DISABLE_THOUGHT_LOGGING"]
+
+    def test_parse_assumption_id_local(self) -> None:
+        """Test parsing local assumption ID"""
+        from ultrathink.models.session import _parse_assumption_id
+
+        session_id, local_id = _parse_assumption_id("A1")
+        assert session_id is None
+        assert local_id == "A1"
+
+    def test_parse_assumption_id_scoped(self) -> None:
+        """Test parsing scoped assumption ID"""
+        from ultrathink.models.session import _parse_assumption_id
+
+        session_id, local_id = _parse_assumption_id("session-123:A1")
+        assert session_id == "session-123"
+        assert local_id == "A1"
+
+    def test_cross_session_reference_unresolved(
+        self, service: UltraThinkService
+    ) -> None:
+        """Test cross-session reference to non-existent session"""
+        request = ThoughtRequest(
+            thought="Depends on other session",
+            total_thoughts=3,
+            depends_on_assumptions=["nonexistent:A1"],
+        )
+
+        # Should not raise error, but track as unresolved
+        response = service.process_thought(request)
+        assert "nonexistent:A1" in response.unresolved_references
+
+    def test_invalidate_cross_session_warning(
+        self, service: UltraThinkService
+    ) -> None:
+        """Test warning when trying to invalidate cross-session assumption"""
+        request = ThoughtRequest(
+            thought="Try to invalidate other session",
+            total_thoughts=3,
+            invalidates_assumptions=["other-session:A1"],
+        )
+
+        response = service.process_thought(request)
+        assert len(response.cross_session_warnings) > 0
+        assert "cross-session invalidation not supported" in response.cross_session_warnings[0]
+
+    def test_unresolved_references_property(self, service: UltraThinkService) -> None:
+        """Test unresolved_references property returns copy from session"""
+        from ultrathink.models.session import ThinkingSession
+        from ultrathink.models.thought import Thought
+
+        session = ThinkingSession()
+
+        # Add a thought with unresolved reference directly to session
+        thought = Thought(
+            thought="Test",
+            thought_number=1,
+            total_thoughts=1,
+            next_thought_needed=False,
+            depends_on_assumptions=["nonexistent:A1"],
+        )
+        session.add_thought(thought)
+
+        # Get unresolved refs from session property
+        unresolved1 = session.unresolved_references
+        unresolved2 = session.unresolved_references
+
+        # Should be equal but not same object (copy)
+        assert unresolved1 == unresolved2
+        assert unresolved1 is not unresolved2
+
+    def test_cross_session_warnings_property(self, service: UltraThinkService) -> None:
+        """Test cross_session_warnings property returns copy from session"""
+        from ultrathink.models.session import ThinkingSession
+        from ultrathink.models.thought import Thought
+
+        session = ThinkingSession()
+
+        # Add a thought with cross-session invalidation
+        thought = Thought(
+            thought="Test",
+            thought_number=1,
+            total_thoughts=1,
+            next_thought_needed=False,
+            invalidates_assumptions=["other:A1"],
+        )
+        session.add_thought(thought)
+
+        # Get warnings from session property
+        warnings1 = session.cross_session_warnings
+        warnings2 = session.cross_session_warnings
+
+        # Should be equal but not same object (copy)
+        assert warnings1 == warnings2
+        assert warnings1 is not warnings2
